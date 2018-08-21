@@ -5,7 +5,11 @@ perfSONAR Git repositories.
 
 Currently, these hooks do the following:
 
- * Abort commits on branches that have been closed to new commits
+ * Abort commits on branches that have been closed to new commits if
+   the file `BRANCH-CLOSED` is present in the root directory of the
+   repository.  Note that this can by bypassed locally, but the
+   perfSONAR GitHub repository will enforce closings if configured to
+   do so.
 
 
 # Installation
