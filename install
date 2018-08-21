@@ -1,0 +1,64 @@
+#!/bin/sh -e
+#
+# Install perfSONAR developer hooks in a Git repository
+#
+# Usage:  install [ PATH-TO-REPO ]
+#
+# Where PATH-TO-REPO is the path to an initialized Git repository.  If
+# not provided, the current directory will be used if there are signs
+# that it is a repository.
+#
+
+WHEREAMI=$(dirname $0)
+
+die()
+{
+    echo "$@" 1>&2
+    exit 1
+}
+
+
+[ "$1" ] && REPO="$1" || REPO="."
+
+
+GIT="${REPO}/.git"
+[ -f "${GIT}/index" ] \
+    || die "${REPO} does not look like an initialized Git repo."
+
+REPO_HOOKS="${GIT}/hooks"
+mkdir -p "${REPO_HOOKS}"
+
+HOOKS="${WHEREAMI}/hooks"
+
+
+# Before doing anything destructive, make sure there are no
+# foreign-looking hooks installed.
+
+find "${HOOKS}" -type f | (
+    while read HOOK
+    do
+	HOOK_NAME=$(basename "${HOOK}")
+	INSTALLED_HOOK="${REPO_HOOKS}/${HOOK_NAME}"
+	if [ -e "${INSTALLED_HOOK}" ]
+	then
+	    fgrep -q 'SOURCE: perfsonar-git-hooks' ${INSTALLED_HOOK} \
+		|| die "A foreign ${HOOK_NAME} hook is already installed."
+	fi
+    done
+)
+
+
+# If we got here, everything is safe.
+
+find "${HOOKS}" -type f | (
+    while read HOOK
+    do
+	HOOK_NAME=$(basename "${HOOK}")
+	INSTALLED_HOOK="${REPO_HOOKS}/${HOOK_NAME}"
+	rm -f "${INSTALLED_HOOK}"
+	cp "${HOOK}" "${INSTALLED_HOOK}"
+	chmod +x "${INSTALLED_HOOK}"
+    done
+)
+
+[ -t 1 ] && echo "All hooks installed successfully."

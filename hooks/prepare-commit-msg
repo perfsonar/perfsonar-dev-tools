@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# Add a warning to the commit message if the branch has been closed.
+#
+# Installable hooks must include this line:
+# SOURCE: perfsonar-git-hooks
+#
+
+MSG_FILE="$1"
+MSG_TMP="${MSG_FILE}-build"
+
+MSG_SOURCE="$2"
+
+cleanup()
+{
+    rm -f "${MSG_TMP}"
+}
+trap cleanup EXIT
+
+warning()
+{
+    cat <<EOF
+
+WARNING: This branch has been closed to commits because the code in it
+         has been released.  If you are seeing this message, the
+         client-side protections that prevent commits have been
+         bypassed.  This commit will succeed, but be aware that the
+         GitHub repository is configured to reject a push in a way
+         that cannot be bypassed.
+
+EOF
+
+}
+
+if [ -e "BRANCH-CLOSED" ]
+then
+    case "${MSG_SOURCE}" in
+	message|template|merge)
+	    warning 1>&2
+	    ;;
+	"")
+	    echo > "${MSG_TMP}"
+	    warning | sed -e 's/^/# /' >> "${MSG_TMP}"
+	    cat "${MSG_FILE}" >> "${MSG_TMP}"
+	    mv "${MSG_TMP}" "${MSG_FILE}"
+	    ;;
+
+	*)
+	    echo "Unknown message source '${MSG_SOURCE}'" 1>&2
+	    exit 1
+	    ;;
+    esac
+fi
+
+exit 0

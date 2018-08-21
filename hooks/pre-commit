@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Hook script that verifies that the branch has not been closed before
+# allowing commits.
+#
+# Installable hooks must include this line:
+# SOURCE: perfsonar-git-hooks
+
+CLOSED_ADD=$(git status -s \
+    | awk '$1 == "A" && $2 == "BRANCH-CLOSED" { print }' \
+    | wc -l )
+
+if [ -e "BRANCH-CLOSED" -a "${CLOSED_ADD}" -eq 0 ]
+then
+    cat <<EOF 1>&2
+
+This branch has been closed to commits because the code in it has been
+released.
+
+The check which caused this commit to be aborted can be bypassed, but
+be aware that the GitHub repository will enforce the same thing in a
+way that cannot.
+
+EOF
+    exit 1
+fi
+
+exit 0
