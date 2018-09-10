@@ -11,12 +11,7 @@
 
 WHEREAMI=$(dirname $0)
 
-die()
-{
-    echo "$@" 1>&2
-    exit 1
-}
-
+. "${WHEREAMI}/common"
 
 [ "$1" ] && REPO="$1" || REPO="."
 
@@ -28,7 +23,7 @@ GIT="${REPO}/.git"
 REPO_HOOKS="${GIT}/hooks"
 mkdir -p "${REPO_HOOKS}"
 
-HOOKS="${WHEREAMI}/hooks"
+HOOKS="${LIBEXEC}/hooks"
 
 
 # Before doing anything destructive, make sure there are no

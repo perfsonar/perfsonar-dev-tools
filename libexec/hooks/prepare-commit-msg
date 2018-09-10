@@ -32,7 +32,11 @@ EOF
 
 }
 
-if [ -e "BRANCH-CLOSED" ]
+CLOSED_ADD=$(git status -s \
+    | awk '$1 == "A" && $2 == "BRANCH-CLOSED" { print }' \
+    | wc -l )
+
+if [ -e "BRANCH-CLOSED" -a "${CLOSED_ADD}" -eq 0 ]
 then
     case "${MSG_SOURCE}" in
 	message|template|merge)
