@@ -1,9 +1,5 @@
 # Development Tools for perfSONAR Developers
 
-This directory contains standard client-side hooks for use with
-perfSONAR Git repositories.
-
-
 ## Git Branch Closer
 
 The `close-branch` program is used on release to prepare for
