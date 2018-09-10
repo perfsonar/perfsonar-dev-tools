@@ -42,7 +42,6 @@ Currently, these hooks do the following:
  * Insert a commented warning in commit messages to that effect in
    case the abort-on-commit hook is bypassed.
 
-
 ### Usage Examples
 
 ```
