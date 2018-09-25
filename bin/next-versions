@@ -42,7 +42,17 @@ opt_parser.add_option("--no-semantic",
                       help="Don't pad short versions with zeros",
                       action="store_false",
                       dest="semantic")
-
+                      
+opt_parser.add_option("--major",
+                      help="Include the major version number",
+                      default=False,
+                      action="store_true",
+                      dest="major")
+                      
+opt_parser.add_option("--no-major",
+                      help="Don't include the major version number (Default)",
+                      action="store_false",
+                      dest="major")
 
 (options, remaining_args) = opt_parser.parse_args()
 
@@ -83,6 +93,10 @@ while parts:
     print ".".join([str(part) for part in out_array])
 
     parts = parts[:-1]
+    #skip major version number unless otherwise specified
+    if not options.major and len(parts) == 1:
+        break
+        
 
 
 exit(0)
