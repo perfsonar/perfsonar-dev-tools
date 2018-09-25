@@ -19,6 +19,7 @@ CHANGED=false
 
 for VERSION in $("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
 do
+    VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')" #trim whitespace
     if repo_has_branch "${VERSION}"
     then
 	narrate "Repo already has a branch ${VERSION}"
