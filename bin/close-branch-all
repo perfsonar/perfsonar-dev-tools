@@ -1,0 +1,59 @@
+#!/bin/sh -e
+#
+# Close version branches in all releasable perfSONAR repos
+# 
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+#GET Version
+VERSION=$1
+if [ -z "$VERSION" ]; then
+    die "Must specify VERSION as command-line option"
+fi
+
+#make temp dir
+TEMPDIR=`mktemp -d`
+narrate "Creating workspace in $TEMPDIR"
+
+#list project
+PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "bwctl" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" )
+
+for PROJECT in "${PROJECTS[@]}"
+do
+    cd $TEMPDIR
+    # checkout clean copy
+    narrate ""
+    narrate "[${PROJECT}]"
+    GIT_URL="https://github.com/perfsonar/${PROJECT}"
+    narrate "Downloading $GIT_URL"
+    git clone $GIT_URL $PROJECT
+    if [ $? -ne 0 ]; then
+        warn "Unable to checkout $PROJECT, skipping"
+        continue
+    fi
+    
+    #get branch
+    cd $PROJECT
+    git fetch
+    narrate "Fetching branch ${VERSION}"
+    HAS_BRANCH=$(git branch --list -r origin/${VERSION})
+    if [ -z $HAS_BRANCH ]; then
+        warn "$PROJECT does not contain branch $VERSION, skipping"
+        continue
+    fi
+    # checkout branches
+    git checkout $VERSION
+    if [ $? -ne 0 ]; then
+        narrate "Unable to checkout branch $VERSION, skipping"
+        continue
+    fi
+    
+    # run close branch
+    ${WHEREAMI}/close-branch || :
+done
+
+#Clean-up TEMPDIR
+echo ""
+rm -rf $TEMPDIR
+echo "[SUCCESS]"
