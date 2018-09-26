@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# Check all projects to see if they need merge into master
+# 
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+#GET Version
+VERSION=$1
+if [ -z "$VERSION" ]; then
+    die "Must specify VERSION as command-line option"
+fi
+
+#make temp dir
+TEMPDIR=`mktemp -d`
+narrate "Creating workspace in $TEMPDIR"
+
+#list project
+CHANGED_PROJECTS=()
+for PROJECT in "${PROJECTS[@]}"
+do
+    cd $TEMPDIR
+    # checkout clean copy
+    narrate ""
+    narrate "[${PROJECT}]"
+    GIT_URL="https://github.com/perfsonar/${PROJECT}"
+    narrate "Downloading $GIT_URL"
+    git clone $GIT_URL $PROJECT
+    if [ $? -ne 0 ]; then
+        warn "Unable to checkout $PROJECT, skipping"
+        continue
+    fi
+    #get branch
+    cd $PROJECT
+    git fetch
+    narrate "Fetching branch ${VERSION}"
+    HAS_BRANCH=$(git branch --list -r origin/${VERSION})
+    if [ -z $HAS_BRANCH ]; then
+        warn "$PROJECT does not contain branch $VERSION, skipping"
+        continue
+    fi
+    #check if branch is already closed
+    if [ -e "BRANCH-CLOSED" ]
+    then
+        narrate "Branch ${CLOSED} already closed, skipping"
+        continue
+    fi
+    # compare branches
+    git diff --quiet --exit-code master remotes/origin/${VERSION} 
+    if [ $? -eq 0 ]; then
+        narrate "No changes this release, skipping"
+        continue
+    else
+        narrate "Changes detected, including in final list of projects"
+        CHANGED_PROJECTS+=("$PROJECT")
+    fi
+done
+
+#print changes PROJECTS
+narrate ""
+narrate "[RESULT]"
+if [ -z "${CHANGED_PROJECTS}" ]; then
+    narrate "No projects need to be merged this release"
+else
+    narrate "The following projects need to be built for this release: "
+    narrate ""
+    for CHANGED_PROJECT in "${CHANGED_PROJECTS[@]}"
+    do
+        narrate "$CHANGED_PROJECT"
+    done
+    narrate ""
+    narrate "Please create a pull request for each to merge into master. After merge, create a tag named v${VERSION}"
+fi
+#Clean-up TEMPDIR
+echo ""
+rm -rf $TEMPDIR
+echo "[SUCCESS]"
