@@ -17,8 +17,6 @@ TEMPDIR=`mktemp -d`
 narrate "Creating workspace in $TEMPDIR"
 
 #list project
-PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "bwctl" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" )
-
 for PROJECT in "${PROJECTS[@]}"
 do
     cd $TEMPDIR
