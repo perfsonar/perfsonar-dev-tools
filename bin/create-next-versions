@@ -20,10 +20,10 @@ CHANGED=false
 for VERSION in $("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
 do
     VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')" #trim whitespace
-    if repo_has_branch "${VERSION}"
-    then
-	narrate "Repo already has a branch ${VERSION}"
-	continue
+    HAS_BRANCH=$(git branch --list -r origin/${VERSION})
+    if [ -n "$HAS_BRANCH" ]; then
+        narrate "Repo already has a branch ${VERSION}"
+        continue
     fi
     git checkout -b "${VERSION}"
     git push origin "${VERSION}"
