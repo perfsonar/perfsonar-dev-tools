@@ -11,7 +11,7 @@ LIBEXEC="${TOP}/libexec"
 PATH="${WHEREAMI}:${PATH}"
 
 #Git projects we want to release
-PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "bwctl" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" )
+PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "bwctl" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" )
 
 # Print something if stdout is a terminal
 narrate()
