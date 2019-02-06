@@ -1,0 +1,81 @@
+#!/bin/bash
+
+#Updates directories and symlinks in yum repo to point at desired release
+
+#Version required
+VERSION=$1
+if [ -z "$VERSION" ]; then
+    echo "Must specify VERSION as command-line option" 1>&2
+    exit 1
+fi
+
+#handle optional parent directory
+BASE_PATH="$2"
+if [ -n "$BASE_PATH" ]; then
+    cd $BASE_PATH
+fi 
+
+#get optional repo name
+REPO="$3"
+
+# Utility function for creating and updating symlinks to point at new versions
+creatsymlinks () {
+    local target=$1
+    local current=$2
+    local next=$3
+    local next2=$4
+    if [ ! -L "$target" ]; then
+        #if doesn't exist, create it
+        ln -s "$current" "$target"
+    elif [ ! -d "$next" ] && [ -z "$next2" -o ! -d "$next2" ]; then
+        #if exists but next minor version does not, assume we are newest
+        unlink "$target"
+        ln -s "$current" "$target"
+    fi
+}
+
+# Primary function that analyzes version and repo to determine what changes to
+#  make in the filesystem
+checkver () {
+    local IFS=.
+    local i ver=($1) repo=$2
+    # fill empty fields in ver1 with zeros
+    for ((i=${#ver[@]}; i<3; i++))
+    do
+        ver[i]=0
+    done
+    
+    #set version values
+    landmark=${ver[0]}
+    major=${ver[1]}
+    minor=${ver[2]}
+    next_major=$((major + 1))
+    next_minor=$((minor + 1))
+
+    #create directory if not exists
+    mkdir -p "$landmark.$major.$minor"
+    
+    #create major version symlink
+    creatsymlinks "$landmark.$major" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
+    #create landmark symlink
+    creatsymlinks "$landmark" "$landmark.$major.$minor" "$landmark.$next_major.0"
+    #create latest symlink
+    creatsymlinks "latest" "$landmark.$major.$minor" "$landmark.$next_major" "$landmark.$major.$next_minor"
+    #create special nightly symlinks
+    if [ "$repo" == "nightly" ]; then
+        creatsymlinks "major" "$landmark.$major.$minor" "$landmark.$next_major.0"
+        
+        #update minor if next major exists and this is newest minor
+        # below handles issues when we build more then two major versions back
+        next_next_major=$((next_major + 1))
+        if [ ! -e "minor" ]; then
+            #if minor does not exist, then create it
+            creatsymlinks "minor" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
+        elif [ -e "$landmark.$next_major.0" ] && [ ! -e "$landmark.$next_next_major.0" ]; then
+            #minor always points to the latest revision that is one version back
+            creatsymlinks "minor" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
+        fi
+    fi
+}
+
+checkver $VERSION $REPO
