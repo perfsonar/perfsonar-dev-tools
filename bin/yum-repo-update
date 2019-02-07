@@ -24,10 +24,11 @@ creatsymlinks () {
     local current=$2
     local next=$3
     local next2=$4
+    local next3=$5
     if [ ! -L "$target" ]; then
         #if doesn't exist, create it
         ln -s "$current" "$target"
-    elif [ ! -d "$next" ] && [ -z "$next2" -o ! -d "$next2" ]; then
+    elif [ ! -d "$next" ] && [ -z "$next2" -o ! -d "$next2" ] && [ -z "$next3" -o ! -d "$next3" ]; then
         #if exists but next minor version does not, assume we are newest
         unlink "$target"
         ln -s "$current" "$target"
@@ -49,6 +50,7 @@ checkver () {
     landmark=${ver[0]}
     major=${ver[1]}
     minor=${ver[2]}
+    next_landmark=$((landmark + 1))
     next_major=$((major + 1))
     next_minor=$((minor + 1))
 
@@ -61,7 +63,7 @@ checkver () {
     #create landmark symlink
     creatsymlinks "$landmark" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
     #create latest symlink
-    creatsymlinks "latest" "$landmark.$major.$minor" "$landmark.$next_major" "$landmark.$major.$next_minor"
+    creatsymlinks "latest" "$landmark.$major.$minor" "$next_landmark.0.0" "$landmark.$next_major" "$landmark.$major.$next_minor"
     #create special nightly symlinks
     if [ "$repo" == "nightly" ]; then
         creatsymlinks "major" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
