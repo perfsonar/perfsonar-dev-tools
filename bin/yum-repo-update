@@ -53,7 +53,8 @@ checkver () {
     next_minor=$((minor + 1))
 
     #create directory if not exists
-    mkdir -p "$landmark.$major.$minor"
+    mkdir -p "$landmark.$major.$minor/packages"
+    mkdir -p "$landmark.$major.$minor/backports"
     
     #create major version symlink
     creatsymlinks "$landmark.$major" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
