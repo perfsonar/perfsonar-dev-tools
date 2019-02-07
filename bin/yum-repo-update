@@ -59,12 +59,12 @@ checkver () {
     #create major version symlink
     creatsymlinks "$landmark.$major" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
     #create landmark symlink
-    creatsymlinks "$landmark" "$landmark.$major.$minor" "$landmark.$next_major.0"
+    creatsymlinks "$landmark" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
     #create latest symlink
     creatsymlinks "latest" "$landmark.$major.$minor" "$landmark.$next_major" "$landmark.$major.$next_minor"
     #create special nightly symlinks
     if [ "$repo" == "nightly" ]; then
-        creatsymlinks "major" "$landmark.$major.$minor" "$landmark.$next_major.0"
+        creatsymlinks "major" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
         
         #update minor if next major exists and this is newest minor
         # below handles issues when we build more then two major versions back
