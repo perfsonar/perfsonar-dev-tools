@@ -29,7 +29,7 @@ creatsymlinks () {
         #if doesn't exist, create it
         ln -s "$current" "$target"
     elif [ ! -d "$next" ] && [ -z "$next2" -o ! -d "$next2" ] && [ -z "$next3" -o ! -d "$next3" ]; then
-        #if exists but next minor version does not, assume we are newest
+        #if exists but next version does not, assume we are newest
         unlink "$target"
         ln -s "$current" "$target"
     fi
@@ -47,36 +47,36 @@ checkver () {
     done
     
     #set version values
-    landmark=${ver[0]}
-    major=${ver[1]}
-    minor=${ver[2]}
-    next_landmark=$((landmark + 1))
+    major=${ver[0]}
+    minor=${ver[1]}
+    patch=${ver[2]}
     next_major=$((major + 1))
     next_minor=$((minor + 1))
+    next_patch=$((patch + 1))
 
     #create directory if not exists
-    mkdir -p "$landmark.$major.$minor/packages"
-    mkdir -p "$landmark.$major.$minor/backports"
+    mkdir -p "$major.$minor.$patch/packages"
+    mkdir -p "$major.$minor.$patch/backports"
     
-    #create major version symlink
-    creatsymlinks "$landmark.$major" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
-    #create landmark symlink
-    creatsymlinks "$landmark" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
+    #create minor version symlink
+    creatsymlinks "$major.$minor" "$major.$minor.$patch" "$major.$minor.$next_patch"
+    #create major symlink
+    creatsymlinks "$major" "$major.$minor.$patch" "$major.$next_minor.0" "$major.$minor.$next_patch"
     #create latest symlink
-    creatsymlinks "latest" "$landmark.$major.$minor" "$next_landmark.0.0" "$landmark.$next_major" "$landmark.$major.$next_minor"
+    creatsymlinks "latest" "$major.$minor.$patch" "$next_major.0.0" "$major.$next_minor" "$major.$minor.$next_patch"
     #create special nightly symlinks
     if [ "$repo" == "nightly" ]; then
-        creatsymlinks "major" "$landmark.$major.$minor" "$landmark.$next_major.0" "$landmark.$major.$next_minor"
+        creatsymlinks "minor" "$major.$minor.$patch" "$major.$next_minor.0" "$major.$minor.$next_patch"
         
-        #update minor if next major exists and this is newest minor
-        # below handles issues when we build more then two major versions back
-        next_next_major=$((next_major + 1))
-        if [ ! -e "minor" ]; then
-            #if minor does not exist, then create it
-            creatsymlinks "minor" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
-        elif [ -e "$landmark.$next_major.0" ] && [ ! -e "$landmark.$next_next_major.0" ]; then
-            #minor always points to the latest revision that is one version back
-            creatsymlinks "minor" "$landmark.$major.$minor" "$landmark.$major.$next_minor"
+        #update patch if next minor exists and this is newest patch
+        # below handles issues when we build more then two minor versions back
+        next_next_minor=$((next_minor + 1))
+        if [ ! -e "patch" ]; then
+            #if patch does not exist, then create it
+            creatsymlinks "patch" "$major.$minor.$patch" "$major.$minor.$next_patch"
+        elif [ -e "$major.$next_minor.0" ] && [ ! -e "$major.$next_next_minor.0" ]; then
+            #patch always points to the latest revision that is one version back
+            creatsymlinks "patch" "$major.$minor.$patch" "$major.$minor.$next_patch"
         fi
     fi
 }
