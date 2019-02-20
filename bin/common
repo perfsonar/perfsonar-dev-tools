@@ -11,7 +11,7 @@ LIBEXEC="${TOP}/libexec"
 PATH="${WHEREAMI}:${PATH}"
 
 #Git projects we want to release
-PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "bwctl" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" "minor-packages")
+PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" "minor-packages")
 
 # Print something if stdout is a terminal
 narrate()
@@ -68,4 +68,27 @@ repo_has_branch()
     (cd ${DIR} && git branch -l) \
 	| awk '{ print $NF }' \
 	| fgrep -x -q "${NAME}"
+}
+
+# Replace auto-generated version and relnum in RPM spec files
+rpm_set_version()
+{   
+    [ "$1" ] && VERSION=$1 || die "Version not provided"
+    [ "$2" ] && RELNUM=$2 || RELNUM="1"
+    #Update .spec version
+    find . -type f -name *.spec* -exec sed -i -r "s/%define perfsonar_auto_version\s+.+/%define perfsonar_auto_version ${VERSION}/" {} \;
+    #Update .spec relnum
+    find . -type f -name *.spec* -exec sed -i -r "s/%define perfsonar_auto_relnum\s+.+/%define perfsonar_auto_relnum ${RELNUM}/" {} \;
+    #Update Makefile version
+    find . -type f -name Makefile -exec sed -i -r "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" {} \;
+    #Update Makefile relnum
+    find . -type f -name Makefile -exec sed -i -r "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" {} \;
+    #Update pom.xml version - TODO: Uncomment in 4.2.0
+    #find . -type f -name pom.xml -exec sed -i -r "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" {} \;
+    
+    #Commit changes to .spec version and relnum
+    HAS_CHANGED=$(git status | grep modified)
+    if [ -n "$HAS_CHANGED" ]; then
+        git commit -a -m "Bumping RPM spec version to ${VERSION}-${RELNUM}"
+    fi
 }
