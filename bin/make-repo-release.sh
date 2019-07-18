@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+# Usage info
+show_help() {
+    cat << EOF
+
+    Usage: ${0##*/} [-agnqv] [-r relnum] [-d debrel] VERSION
+
+    This script releases  a  new  version  (final,  RC,  beta  or  alpha)  of  a
+    perfSONAR package out of a given repository. It always  takes  an  argument:
+    the VERSION to be released.
+
+    VERSION and relnum (-r) are mandatory. If a tag is already existing for  the
+    given VERSION and relnum, nothing will be done. If a debrel (-d)  is  given,
+    then it will also be a Debian release (unless the corresponding  Debian  tag
+    is already existing).
+
+    The given VERSION number is checked against the previous one  to  make  sure
+    the sequence is increasing or stays the same  (but  then  relnum  or  debrel
+    needs to increase).
+
+    The RPM .spec and the debian/changelog files are automatically  modified  by
+    this script. The script will create a new git commit with all changed  files
+    and will add the corresponding tag. Debian quilt patches are  refreshed  and
+    added to the commit as well.
+
+    Two environment variables can be used  to  generate  the  Debian  changelog:
+        - DEBEMAIL: the email mentioned in the changelog signature
+        - DEBFULLNAME: the name mentioned in the changelog signature
+    If those  2  variables  are  not  defined,  then  your  git  user.email  and
+    user.name will be used.
+
+    You can call this script with the following args:
+        -a: add modified files to the commit (use \`git commit -a\`)
+        -g: don't do any git action (no commit, no tag)
+        -n: performs a dry-run
+        -q: don't refresh quilt patches
+        -v: verbose
+        -r: the RPM package release number
+            ex: 1, 2, 3.14
+        -d: the Debian package release number
+            ex: 1, 2, 1~bpo80+1
+
+    This script should run fine on both Linux and BSD systems.
+EOF
+}
+
+# Initialisations
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+# Defaults
+v=false
+dry_run=false
+no_git=false
+quilt_refresh=true
+unset commit_a
+
+# Parsing options
+while getopts "a:d:gnqr:v" OPT; do
+    case $OPT in
+        a) commit_a="-a" ;;
+        d) debrel=$OPTARG ;;
+        g) no_git=true ;;
+        n) dry_run=true ;;
+        q) quilt_refresh=false ;;
+        r) relnum=$OPTARG ;;
+        v) 
+            v=true
+            verbose "\033[1mI'm running in verbose mode.\033[0m" ;;
+        '?')
+            show_help >&2
+            exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+VERSION=$1
+if [[ -z "$VERSION" || -z "$relnum" ]]; then
+    show_help >&2
+    error "VERSION and relnum (-r) must be given to make a release."
+fi
+
+# Check current branch against version: must be the same
+BRANCH=`git branch --list | awk '/^\* .*$/ {print $2}'`
+if [ "$VERSION" != "$BRANCH" ]; then
+    error "I cannot make the $VERSION release from branch $BRANCH"
+fi
+if [[ "0" == "${BRANCH##*.}" ]]; then
+    # If the last digit of the branch number is 0, we are on a minor release
+    export DEB_REPO=perfsonar-minor-staging
+else
+    # otherwise we are on a patch release
+    export DEB_REPO=perfsonar-patch-staging
+fi
+
+# The versions and tags need to conform to our policy detailed at https://github.com/perfsonar/project/wiki/Versioning
+PKG="${PWD##*\/}"
+RPM_VERSION="$VERSION-$relnum"
+DEB_VERSION="$VERSION"
+if [ "${relnum:0:1}" == "0" ]; then
+    # That's a alpha/beta/RC
+    GIT_TAG="v$VERSION-${relnum#*\.}"
+    DEB_VERSION="$DEB_VERSION~${relnum#*\.}"
+    verbose "We have an alpha, beta or candidate release."
+elif [ "${relnum:0:1}" == "1" ]; then
+    # That's a final
+    GIT_TAG="v$VERSION"
+    verbose "Let's celebrate, we have a final release!"
+else
+    # That's a RPM only release
+    GIT_TAG="v$VERSION-rpm${relnum}"
+    verbose "We have an RPM repackaging release."
+fi
+
+# Is the GIT_TAG already existing?
+if git tag -l | grep -qE "^${GIT_TAG}$" ; then
+    # Git tag is already existing it must be a Debian only release
+    warn "Git tag $GIT_TAG is already existing in repository, I will not touch the RPM specfile nor any Makefile"
+    if [ -z "$debrel" ]; then
+        error "No Debian release asked, I'll stop here."
+    fi
+    verbose "This is a DEB only release."
+    unset RPM_VERSION
+else
+    verbose "This is a dual RPM and DEB release."
+fi
+
+# Check all is fine and prepare for the Debian release
+if [ -n "$debrel" ]; then
+    if [[ -f debian/changelog && -f debian/gbp.conf ]]; then
+        verbose "debian/changelog and debian/gbp.conf are present, that's a good start."
+    else
+        error "${PWD##*\/} doesn't look like a Debian packaging tree, I cannot find debian/changelog or debian/gbp.conf."
+    fi
+    DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' debian/gbp.conf`
+    if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
+        verbose "Current git branch ($BRANCH) matches the gbp configured branch ($DEBIAN_BRANCH)."
+    else
+        error "Your current git branch ($BRANCH) is not the same as the branch configured for gbp ($DEBIAN_BRANCH)."
+    fi
+    DEB_PKG=`awk 'NR==1 {print $1}' debian/changelog`
+    DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' debian/gbp.conf`
+    if grep -q '(native)' debian/source/format ; then
+        verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
+        # Still, -d need to be used to build the Debian package…
+    else
+        DEB_VERSION="$DEB_VERSION-$debrel"
+    fi
+    # Preparing debian git tag (~ are not allowed)
+    DEBIAN_TAG="debian/$DEB_DISTRO/${DEB_VERSION/\~bpo/_bpo}"
+    DEBIAN_TAG="${DEBIAN_TAG/\~/-}"
+    # Check there is not an already existing Debian tag
+    if git tag -l | grep -q "^${DEBIAN_TAG}$" ; then
+        error "$DEBIAN_TAG is already existing in this repository."
+    fi
+
+    # Preparing debian/changelog
+    if [[ "0" == "${BRANCH##*.}" ]]; then
+        DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-minor-staging; urgency=low"
+    else
+        DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-patch-staging; urgency=low"
+    fi
+    # If it's a DEB only release
+    if [ -z "$RPM_VERSION" ]; then
+        # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
+        if git diff --name-only $GIT_TAG -- | grep -Ev "^debian/"; then
+            error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
+        fi
+    fi
+
+    # Replace debian/changelog signature line with commiter or DEBEMAIL info
+    # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
+    if [ -z "$DEBEMAIL" ]; then
+        DEBEMAIL=`git config user.email`
+    fi
+    if [ -z "$DEBFULLNAME" ]; then
+        DEBFULLNAME=`git config user.name`
+    fi
+    # We use a date format that is working on both Linux and BSD
+    DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
+    FINISH_LINE=" -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DATE}"
+    verbose "The debian/changelog header will be:"
+    verbose "$DEB_CHANGELOG"
+    verbose "The Debian package signature line will be:"
+    # Cannot use verbose here as it will strip the extra spaces required by Debian
+    $v && printf "${FINISH_LINE}\n"
+    echo -e "The Debian release will be tagged as \033[1;32m${DEBIAN_TAG}\033[0m."
+else
+    unset DEB_VERSION
+    echo
+fi
+
+# Final call before take off
+echo -e "I'll now prepare to release version \033[1;32m$VERSION\033[0m of \033[1;32m$PKG\033[0m"
+echo -e "TAG: \033[1m$GIT_TAG\033[0m | RPM: \033[1m$RPM_VERSION\033[0m | DEB: \033[1m$DEB_VERSION\033[0m"
+if $dry_run ; then
+    if [[ $quilt_refresh && -d debian/patches ]]; then
+        verbose "We will try to refresh Debian quilt patches to match current repository content."
+    fi
+    v=true
+    verbose "\033[1mThis is a dry run, I haven't touched a thing.\033[0m"
+    exit
+fi
+
+# Do the actual RPM changes
+echo -e "\033[1mRPM Processing in progress…\033[0m"
+# Make sure we don't change versions in submodules
+git submodule deinit -f .
+rpm_set_version "$VERSION" "$relnum"
+# TODO: how can we re-init submodules that were present at first?
+
+# Do the actual DEB changes
+if [ -n "$debrel" ]; then
+    echo -e "\033[1mDEB Processing in progress…\033[0m"
+    # Refresh quilt patches if needed (if a refresh is not possible, this will stop and manual correction should happen)
+    if [[ $quilt_refresh && -s debian/patches/series ]]; then
+        verbose "Trying to refresh quilt patches to latest merge."
+        export QUILT_PATCHES="debian/patches"
+        export QUILT_REFRESH_ARGS="-p ab --no-index"
+        quilt --quiltrc - push -aq --refresh > /dev/null
+        [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
+        quilt pop -aq > /dev/null
+        [ $? -eq 0 ] || error "Something went wrong trying to reverse the quilt patches."
+        git add debian/patches
+    fi
+
+    # Update the debian/changelog file
+    n=`grep -nm 1 " -- " debian/changelog | awk -F ':' '{print $1}'`
+    TMP_FILE=`mktemp`
+    sed "${n}s/^ -- .* [+-][0-9]\{4\}/${FINISH_LINE}/" debian/changelog > "$TMP_FILE"
+    echo "$DEB_CHANGELOG" > debian/changelog
+    tail -n +2 "$TMP_FILE" >> debian/changelog
+    /bin/rm "$TMP_FILE"
+    git add debian/changelog
+fi
+
+# Check if there are no pending changes in the repository
+if git status --porcelain | grep -E '^.[^ ] '; then
+    error "There are modified files not stagged for commit in this repository, what shall we do with those?"
+fi
+
+if $no_git ; then
+    # Or just return the version and the tags to be used to do a manual commit
+    echo "Everthing's ready for releasing $PKG $VERSION"
+    echo -e "TAG: \033[1m$GIT_TAG\033[0m | RPM: \033[1m$RPM_VERSION\033[0m | DEB: \033[1m$DEB_VERSION\033[0m"
+    echo "But nothing was added/commited to the git repository."
+    echo "You can run the script again without the -g switch to do the commit and tagging this time."
+else
+    # Perform the git commit and add the tags
+    echo
+    GITMSG="Releasing $PKG"
+    if [ -n "$RPM_VERSION" ]; then
+        GITMSG="$GITMSG - RPM $RPM_VERSION"
+    fi
+    if [ -n "$DEB_VERSION" ]; then
+        GITMSG="$GITMSG - DEB $DEB_VERSION"
+    fi
+    git commit ${commit_a} -m "$GITMSG"
+    if [ -n "$RPM_VERSION" ]; then
+        git tag "${GIT_TAG}"
+    fi
+    if [ -n "$DEB_VERSION" ]; then
+        git tag "${DEBIAN_TAG}"
+    fi
+    echo
+    echo "If you're happy with the commit and tag(s) above, you just need to push that away!"
+fi
+

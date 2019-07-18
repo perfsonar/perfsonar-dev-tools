@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#
+# Perform functions on branches for releasing packages.
+# 
+# Usage:
+#       make-release VERSION RELNUM
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+# Get version from parameter
+VERSION="$1"
+if [ -z "$VERSION" ]; then
+    die "Must specify VERSION as first command-line option"
+fi
+
+# Get relnum from parameter
+RELNUM="$2"
+if [ -z "$RELNUM" ]; then
+    die "Must specify RELNUM as second command-line option"
+fi
+if [ "${RELNUM:0:1}" == "0" ]; then
+    narrate "We have an alpha, beta or release candidate."
+elif [ "${RELNUM}" == "1" ]; then
+    narrate "We have a final release, celebrate!"
+    # Merge all changes into existing branches for next versions
+    narrate "[MERGE FORWARD]"
+    "${WHEREAMI}/merge-forward" "$VERSION"
+else
+    error "We have an RPM repackaging release (RELNUM > 1), are you sure it is for all the projects?"
+fi
+
+# Do the actual processing in a temporary directory
+TEMPDIR=`mktemp -d`
+narrate "Creating workspace in $TEMPDIR"
+
+# Go through all projects
+for PROJECT in "${PROJECTS[@]}"
+do
+    cd "$TEMPDIR"
+    # checkout clean copy
+    narrate ""
+    narrate "[${PROJECT}]"
+    GIT_URL="https://github.com/perfsonar/${PROJECT}"
+    narrate "Downloading $GIT_URL"
+    git clone "$GIT_URL" "$PROJECT"
+    
+    #get branch
+    cd "$PROJECT"
+    git fetch
+    narrate "Fetching branch ${VERSION}"
+    HAS_BRANCH=$(git branch --list -r "origin/${VERSION}")
+    if [ -z "$HAS_BRANCH" ]; then
+        warn "$PROJECT does not contain branch $VERSION, skipping"
+        continue
+    fi
+    
+    # checkout branches since git sometimes needs this to merge
+    git checkout "$VERSION"
+    
+    # Process RPM and DEB files for release
+    make-repo-release.sh -r "$RELNUM" -d 1 "$VERSION"
+
+    # Push changes away
+    # TODO: to enable when we're confortable everything is working fine
+    #git push
+    #git push --tags
+done
+
+# Clean-up TEMPDIR
+echo ""
+rm -rf "$TEMPDIR"
+echo "[SUCCESS]"

@@ -1,3 +1,4 @@
+# vim: filetype=bash
 #
 # Common Utilities
 #
@@ -10,8 +11,8 @@ LIBEXEC="${TOP}/libexec"
 
 PATH="${WHEREAMI}:${PATH}"
 
-#Git projects we want to release
-PROJECTS=( "pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web")
+# Git projects we want to release
+PROJECTS=("pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web")
 
 # Print something if stdout is a terminal
 narrate()
@@ -22,7 +23,7 @@ narrate()
 # Emit a warning
 warn()
 {
-    echo "$@" 1>&2
+    echo -e "\033[1;33m$@\033[0m" 1>&2
 }
 
 
@@ -33,12 +34,24 @@ die()
     exit 1
 }
 
+# Error handler
+error() {
+    echo -e "\033[1m$@\033[0m" >&2
+    $v && echo -e "\033[1;31mBetter I stop now, before doing any commit to the local repo.\033[0m" >&2
+    exit 1
+}
+
+# Verbose handler
+verbose() {
+    $v && echo -e "$@"
+}
+
 
 # Find the top of a Git repo relative to the current directory or one
 # specified.
 repo_top()
 {
-    [ "$1" ] && DIR=$1 || DIR="."
+    [ "$1" ] && DIR="$1" || DIR="."
     [ -d "${DIR}" ] \
 	|| die "${DIR}: Not a directory."
 
@@ -62,10 +75,10 @@ repo_top()
 repo_has_branch()
 {
     NAME="$1"
-    [ "$2" ] && DIR=$2 || DIR="."
+    [ "$2" ] && DIR="$2" || DIR="."
     [ -d "${DIR}" ] \
 	|| die "${DIR}: Not a directory."
-    (cd ${DIR} && git branch -l) \
+    (cd "${DIR}" && git branch -l) \
 	| awk '{ print $NF }' \
 	| fgrep -x -q "${NAME}"
 }
@@ -73,22 +86,54 @@ repo_has_branch()
 # Replace auto-generated version and relnum in RPM spec files
 rpm_set_version()
 {   
-    [ "$1" ] && VERSION=$1 || die "Version not provided"
-    [ "$2" ] && RELNUM=$2 || RELNUM="1"
-    #Update .spec version
-    find . -type f -name *.spec* -exec sed -i -r "s/%define perfsonar_auto_version\s+.+/%define perfsonar_auto_version ${VERSION}/" {} \;
-    #Update .spec relnum
-    find . -type f -name *.spec* -exec sed -i -r "s/%define perfsonar_auto_relnum\s+.+/%define perfsonar_auto_relnum ${RELNUM}/" {} \;
-    #Update Makefile version
-    find . -type f -name Makefile -exec sed -i -r "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" {} \;
-    #Update Makefile relnum
-    find . -type f -name Makefile -exec sed -i -r "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" {} \;
-    #Update pom.xml version - TODO: Uncomment in 4.2.0
-    #find . -type f -name pom.xml -exec sed -i -r "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" {} \;
-    
-    #Commit changes to .spec version and relnum
-    HAS_CHANGED=$(git status | grep modified)
-    if [ -n "$HAS_CHANGED" ]; then
-        git commit -a -m "Bumping RPM spec version to ${VERSION}-${RELNUM}"
-    fi
+    [ "$1" ] && export VERSION="$1" || die "Version not provided"
+    [ "$2" ] && export RELNUM="$2" || RELNUM="1"
+    # sed -i behaves differently on BSD, so using temporary file
+    export TMP_FILE=`mktemp`
+    # Update .spec version
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -r "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update .spec relnum
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -r "s/%define perfsonar_auto_relnum[[:space:]]+.+/%define perfsonar_auto_relnum ${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update Makefile version
+    find . -type f -name Makefile -exec sh -c 'for f do sed -r "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update Makefile relnum
+    find . -type f -name Makefile -exec sh -c 'for f do sed -r "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update pom.xml version - TODO: Uncomment in 4.2.0
+    find . -type f -name pom.xml -exec sh -c 'for f do sed -r "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    /bin/rm -f "$TMP_FILE"
 }
+
+# Creates a new debian/changelog entry for new version
+deb_set_new_version()
+{
+    [ "$1" ] && VERSION="$1" || error "Version not provided"
+    [ "$2" ] && RELNUM="$2" || error "Release Number not provided"
+    if [ "0" = "${relnum%%.*}" ]; then
+        # Starting with a "0.", that's an alpha, beta or RC
+        DEB_VERSION="$VERSION~${RELNUM#*\.}"
+    else
+        # That's a final
+        DEB_VERSION="$VERSION"
+    fi
+    PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
+    TMP_FILE=`mktemp`
+    if [ "0" = "${VERSION##*.}" ]; then
+        # Minor release always has ".0" at the end
+        PS_REPO="perfsonar-minor-snapshot"
+    else
+        # Patch release
+        PS_REPO="perfsonar-patch-snapshot"
+    fi
+    DEB_DATE=`LANG=C date "+\%a, \%d \%b \%Y \%T \%z"`
+    echo -e "$PKG_NAME ($DEB_VERSION-1) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- perfSONAR developers <debian@perfsonar.net>  $DEB_DATE" > "$TMP_FILE"
+    cat debian/changelog >> "$TMP_FILE"
+    /bin/mv "$TMP_FILE" debian/changelog
+    git add debian/changelog
+
+    # Update gbp.conf to new branch
+    sed '/^upstream-branch =/ s/.*/upstream-branch = $VERSION/' debian/gbp.conf > "$TMP_FILE"
+    sed '/^debian-branch =/ s/.*/debian-branch = $VERSION/' "$TMP_FILE" > debian/gbp.conf
+    /bin/rm "$TMP_FILE"
+    git add debian/gbp.conf
+}
+
