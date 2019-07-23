@@ -45,8 +45,9 @@ EOF
 }
 
 # Initialisations
-WHEREAMI=$(dirname $0)
+WHEREAMI=`dirname $0`
 . "${WHEREAMI}/common"
+MYCWD=`pwd`
 
 # Defaults
 v=false
@@ -126,26 +127,52 @@ fi
 
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then
-    if [[ -f debian/changelog && -f debian/gbp.conf ]]; then
-        verbose "debian/changelog and debian/gbp.conf are present, that's a good start."
+    if [[ "$PKG" == "pscheduler" ]]; then
+        echo -n "Checking pScheduler internal dependencies"
+        ./scripts/debian/check-rpm-deb-deps
+        # TODO: we should also check the pscheduler-bundles contain the same set of packages
+        # Loop on all pscheduler packages to be released for Debian
+        directories=`ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`
+        GBP_CONF=pscheduler-server/pscheduler-server/debian/gbp.conf
+        # This will need to be replaced when actually making the changelog entry at the end
+        DEB_PKG=`awk 'NR==1 {print $1}' pscheduler-server/pscheduler-server/debian/changelog`
     else
-        error "${PWD##*\/} doesn't look like a Debian packaging tree, I cannot find debian/changelog or debian/gbp.conf."
+        directories="."
+        GBP_CONF=debian/gbp.conf
+        DEB_PKG=`awk 'NR==1 {print $1}' debian/changelog`
     fi
-    DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' debian/gbp.conf`
+    for dir in $directories; do
+        if [ -d $dir/$dir ]; then
+            # In case we're in the pscheduler repo and checking for packages which have a second level of directories
+            cd $dir
+        fi
+        if [ -d $dir/pscheduler ]; then
+            # Special directory naming for python-pscheduler
+            cd $dir
+            dir=pscheduler
+        fi
+        if [[ -f $dir/debian/changelog && -f $dir/debian/gbp.conf ]]; then
+            verbose "$dir/debian/changelog and $dir/debian/gbp.conf are present, that's a good start."
+        else
+            error "$dir doesn't look like a Debian packaging tree, I cannot find debian/changelog or debian/gbp.conf."
+        fi
+        cd $MYCWD
+    done
+    DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' $GBP_CONF`
     if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
         verbose "Current git branch ($BRANCH) matches the gbp configured branch ($DEBIAN_BRANCH)."
     else
         error "Your current git branch ($BRANCH) is not the same as the branch configured for gbp ($DEBIAN_BRANCH)."
     fi
-    DEB_PKG=`awk 'NR==1 {print $1}' debian/changelog`
-    DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' debian/gbp.conf`
-    if grep -q '(native)' debian/source/format ; then
+    if grep -qs '(native)' debian/source/format ; then
+        # No need to check native pscheduler packages, there aren't any
         verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
         # Still, -d need to be used to build the Debian package…
     else
         DEB_VERSION="$DEB_VERSION-$debrel"
     fi
     # Preparing debian git tag (~ are not allowed)
+    DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' $GBP_CONF`
     DEBIAN_TAG="debian/$DEB_DISTRO/${DEB_VERSION/\~bpo/_bpo}"
     DEBIAN_TAG="${DEBIAN_TAG/\~/-}"
     # Check there is not an already existing Debian tag
@@ -162,7 +189,7 @@ if [ -n "$debrel" ]; then
     # If it's a DEB only release
     if [ -z "$RPM_VERSION" ]; then
         # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
-        if git diff --name-only $GIT_TAG -- | grep -Ev "^debian/"; then
+        if git diff --name-only $GIT_TAG -- | grep -Ev "(^debian/|/debian/)"; then
             error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
         fi
     fi
@@ -211,26 +238,44 @@ rpm_set_version "$VERSION" "$relnum"
 # Do the actual DEB changes
 if [ -n "$debrel" ]; then
     echo -e "\033[1mDEB Processing in progress…\033[0m"
-    # Refresh quilt patches if needed (if a refresh is not possible, this will stop and manual correction should happen)
-    if [[ $quilt_refresh && -s debian/patches/series ]]; then
-        verbose "Trying to refresh quilt patches to latest merge."
-        export QUILT_PATCHES="debian/patches"
-        export QUILT_REFRESH_ARGS="-p ab --no-index"
-        quilt --quiltrc - push -aq --refresh > /dev/null
-        [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
-        quilt pop -aq > /dev/null
-        [ $? -eq 0 ] || error "Something went wrong trying to reverse the quilt patches."
-        git add debian/patches
-    fi
+    for dir in $directories; do
+        # Loop on each directories, needed for pScheduler repository
+        cd $dir
+        if [ ! -f debian/changelog ]; then
+            # pScheduler directories sometimes have a second level
+            if [ -d pscheduler ]; then
+                # And python-pscheduler is an even more special case
+                cd pscheduler
+            else
+                cd $dir
+            fi
+        fi
+        # Refresh quilt patches if needed (if a refresh is not possible, this will stop and manual correction should happen)
+        if [[ $quilt_refresh && -s debian/patches/series ]]; then
+            verbose "Trying to refresh quilt patches to latest merge."
+            export QUILT_PATCHES="debian/patches"
+            export QUILT_REFRESH_ARGS="-p ab --no-index"
+            quilt --quiltrc - push -aq --refresh > /dev/null
+            [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
+            quilt pop -aq > /dev/null
+            [ $? -eq 0 ] || error "Something went wrong trying to reverse the quilt patches."
+            git add debian/patches
+        fi
 
-    # Update the debian/changelog file
-    n=`grep -nm 1 " -- " debian/changelog | awk -F ':' '{print $1}'`
-    TMP_FILE=`mktemp`
-    sed "${n}s/^ -- .* [+-][0-9]\{4\}/${FINISH_LINE}/" debian/changelog > "$TMP_FILE"
-    echo "$DEB_CHANGELOG" > debian/changelog
-    tail -n +2 "$TMP_FILE" >> debian/changelog
-    /bin/rm "$TMP_FILE"
-    git add debian/changelog
+        # Update the debian/changelog file
+        n=`grep -nm 1 " -- " debian/changelog | awk -F ':' '{print $1}'`
+        TMP_FILE=`mktemp`
+        sed "${n}s/^ -- .* [+-][0-9]\{4\}/${FINISH_LINE}/" debian/changelog > "$TMP_FILE"
+        if [[ "$PKG" == "pscheduler" ]]; then
+            echo "${DEB_CHANGELOG/pscheduler-server/$dir}" > debian/changelog
+        else
+            echo "$DEB_CHANGELOG" > debian/changelog
+        fi
+        tail -n +2 "$TMP_FILE" >> debian/changelog
+        /bin/rm "$TMP_FILE"
+        git add debian/changelog
+        cd "$MYCWD"
+    done
 fi
 
 # Check if there are no pending changes in the repository
