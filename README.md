@@ -51,7 +51,7 @@ Currently, these hooks do the following:
 
 ## Make a release in a repository
 
-The `make-repo-release.sh` program try to release new packages from a 
+The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
 It has additional options which ore documented in the script `-h`.
@@ -64,25 +64,25 @@ This program enforces the [version numbering as specified in our policy](https:/
 Making a beta release:
 ```
 % cd ~/work/my-repository
-% /path/to/tools/bin/make-repo-release.sh -r 0.b1.2 -d 1 -g 4.2.0
+% /path/to/tools/bin/make-repo-release -r 0.b1.2 -d 1 -g 4.2.0
 ```
 
 Making a final release:
 ```
 % cd ~/work/my-repository
-% /path/to/tools/bin/make-repo-release.sh -r 1 -d 1 -g 4.2.0
+% /path/to/tools/bin/make-repo-release -r 1 -d 1 -g 4.2.0
 ```
 
 Making a RPM only release:
 ```
 % cd ~/work/my-repository
-% /path/to/tools/bin/make-repo-release.sh -r 2 -g 4.2.0
+% /path/to/tools/bin/make-repo-release -r 2 -g 4.2.0
 ```
 
 Making a Debian only release:
 ```
 % cd ~/work/my-repository
-% /path/to/tools/bin/make-repo-release.sh -r 1 -d 2 -g 4.2.0
+% /path/to/tools/bin/make-repo-release -r 1 -d 2 -g 4.2.0
 ```
 
 

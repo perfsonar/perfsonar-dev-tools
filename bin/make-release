@@ -59,7 +59,7 @@ do
     git checkout "$VERSION"
     
     # Process RPM and DEB files for release
-    make-repo-release.sh -r "$RELNUM" -d 1 "$VERSION"
+    make-repo-release -r "$RELNUM" -d 1 "$VERSION"
 
     # Push changes away
     # TODO: to enable when we're confortable everything is working fine
