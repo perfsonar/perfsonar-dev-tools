@@ -36,7 +36,7 @@ show_help() {
         -q: don't refresh quilt patches
         -v: verbose
         -r: the RPM package release number
-            ex: 1, 2, 3.14
+            ex: 0.b1.1, 1, 2, 3.14
         -d: the Debian package release number
             ex: 1, 2, 1~bpo80+1
 
@@ -111,6 +111,9 @@ else
     # That's a RPM only release
     GIT_TAG="v$VERSION-rpm${relnum}"
     verbose "We have an RPM repackaging release."
+    if [ -n "$debrel" ]; then
+        error "You asked for both an RPM repackaging release and a Debian repackaging release, that's not compatible.\nThat should actually be a fully new release (or a new alpha/beta/RC)."
+    fi
 fi
 
 # Is the GIT_TAG already existing?
@@ -124,6 +127,9 @@ if git tag -l | grep -qE "^${GIT_TAG}$" ; then
     unset RPM_VERSION
 else
     verbose "This is a dual RPM and DEB release."
+    if [ "$debrel" != "1" ]; then
+        error "For a dual RPM and DEB release, debrel must be 1 as it's the first package release for this version."
+    fi
 fi
 
 # Check all is fine and prepare for the Debian release
