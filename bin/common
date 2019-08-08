@@ -91,15 +91,15 @@ rpm_set_version()
     # sed -i behaves differently on BSD, so using temporary file
     export TMP_FILE=`mktemp`
     # Update .spec version
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -r "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update .spec relnum
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -r "s/%define perfsonar_auto_relnum[[:space:]]+.+/%define perfsonar_auto_relnum ${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+/%define perfsonar_auto_relnum ${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile version
-    find . -type f -name Makefile -exec sh -c 'for f do sed -r "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile relnum
-    find . -type f -name Makefile -exec sh -c 'for f do sed -r "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update pom.xml version - TODO: Uncomment in 4.2.0
-    find . -type f -name pom.xml -exec sh -c 'for f do sed -r "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name pom.xml -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     /bin/rm -f "$TMP_FILE"
 }
 

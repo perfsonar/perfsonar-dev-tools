@@ -3,7 +3,7 @@
 show_help() {
     cat << EOF
 
-    Usage: ${0##*/} [-agnqv] [-r relnum] [-d debrel] VERSION
+    Usage: ${0##*/} [-fgnqv] [-r relnum] [-d debrel] VERSION
 
     This script releases  a  new  version  (final,  RC,  beta  or  alpha)  of  a
     perfSONAR package out of a given repository. It always  takes  an  argument:
@@ -30,13 +30,13 @@ show_help() {
     user.name will be used.
 
     You can call this script with the following args:
-        -a: add modified files to the commit (use \`git commit -a\`)
+        -f: force release even if version don't match branch
         -g: don't do any git action (no commit, no tag)
         -n: performs a dry-run
         -q: don't refresh quilt patches
         -v: verbose
         -r: the RPM package release number
-            ex: 1, 2, 3.14
+            ex: 0.b1.1, 1, 2, 3.14
         -d: the Debian package release number
             ex: 1, 2, 1~bpo80+1
 
@@ -52,15 +52,16 @@ MYCWD=`pwd`
 # Defaults
 v=false
 dry_run=false
+force=false
 no_git=false
 quilt_refresh=true
 unset commit_a
 
 # Parsing options
-while getopts "a:d:gnqr:v" OPT; do
+while getopts "d:fgnqr:v" OPT; do
     case $OPT in
-        a) commit_a="-a" ;;
         d) debrel=$OPTARG ;;
+        f) force=true ;;
         g) no_git=true ;;
         n) dry_run=true ;;
         q) quilt_refresh=false ;;
@@ -82,7 +83,7 @@ fi
 
 # Check current branch against version: must be the same
 BRANCH=`git branch --list | awk '/^\* .*$/ {print $2}'`
-if [ "$VERSION" != "$BRANCH" ]; then
+if [[ "$force" == "false" && "$VERSION" != "$BRANCH" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
 fi
 if [[ "0" == "${BRANCH##*.}" ]]; then
@@ -110,6 +111,9 @@ else
     # That's a RPM only release
     GIT_TAG="v$VERSION-rpm${relnum}"
     verbose "We have an RPM repackaging release."
+    if [ -n "$debrel" ]; then
+        error "You asked for both an RPM repackaging release and a Debian repackaging release, that's not compatible.\nThat should actually be a fully new release (or a new alpha/beta/RC)."
+    fi
 fi
 
 # Is the GIT_TAG already existing?
@@ -123,6 +127,9 @@ if git tag -l | grep -qE "^${GIT_TAG}$" ; then
     unset RPM_VERSION
 else
     verbose "This is a dual RPM and DEB release."
+    if [ "$debrel" != "1" ]; then
+        error "For a dual RPM and DEB release, debrel must be 1 as it's the first package release for this version."
+    fi
 fi
 
 # Check all is fine and prepare for the Debian release
