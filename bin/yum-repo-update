@@ -57,6 +57,10 @@ checkver () {
     #create directory if not exists
     mkdir -p "$major.$minor.$patch/packages"
     mkdir -p "$major.$minor.$patch/backports"
+    if [ ! -L "$major.$minor.$patch/RPMS" ]; then
+        #for backward compatibility with old layout
+        ln -s "packages" "$major.$minor.$patch/RPMS"
+    fi
     
     #create minor version symlink
     creatsymlinks "$major.$minor" "$major.$minor.$patch" "$major.$minor.$next_patch"
@@ -64,6 +68,14 @@ checkver () {
     creatsymlinks "$major" "$major.$minor.$patch" "$major.$next_minor.0" "$major.$minor.$next_patch"
     #create latest symlink
     creatsymlinks "latest" "$major.$minor.$patch" "$next_major.0.0" "$major.$next_minor" "$major.$minor.$next_patch"
+    if [ ! -L "main" ]; then
+        #for backward compatibility with old layout
+        ln -s latest main
+    fi
+    if [ ! -L "RPMS.main" ]; then
+        #for backward compatibility with old layout
+        ln -s latest/packages RPMS.main
+    fi
     #create special nightly symlinks
     if [ "$repo" == "nightly" ]; then
         creatsymlinks "minor" "$major.$minor.$patch" "$major.$next_minor.0" "$major.$minor.$next_patch"
