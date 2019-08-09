@@ -59,12 +59,16 @@ do
     git checkout "$VERSION"
     
     # Process RPM and DEB files for release
-    ${WHEREAMI}/make-repo-release -r "$RELNUM" -d 1 "$VERSION"
+    DEB_OPT=""
+    if [ -d debian]; then
+        #only set a debian release if we actually have a debian directory
+        DEB_OPT="-d 1"
+    fi
+    ${WHEREAMI}/make-repo-release -r "$RELNUM" $DEB_OPT "$VERSION"
 
     # Push changes away
-    # TODO: to enable when we're confortable everything is working fine
-    #git push
-    #git push --tags
+    git push
+    git push --tags
 done
 
 # Clean-up TEMPDIR

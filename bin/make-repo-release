@@ -127,7 +127,7 @@ if git tag -l | grep -qE "^${GIT_TAG}$" ; then
     unset RPM_VERSION
 else
     verbose "This is a dual RPM and DEB release."
-    if [ "$debrel" != "1" ]; then
+    if [[ -n "$debrel" && "$debrel" != "1" ]]; then
         error "For a dual RPM and DEB release, debrel must be 1 as it's the first package release for this version."
     fi
 fi

@@ -28,7 +28,7 @@ do
     fi
     git checkout -b "${VERSION}"
     rpm_set_version "$VERSION" "$RELNUM" || :
-    deb_set_new_version "$VERSION" "$RELNUM"
+    deb_set_new_version "$VERSION" "$RELNUM" || :
     git commit -m "Preparing packaging for next version: v$VERSION-$RELNUM"
     git push origin "${VERSION}"
     git branch --set-upstream-to="origin/${VERSION}" "${VERSION}"
