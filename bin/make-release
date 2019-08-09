@@ -60,7 +60,7 @@ do
     
     # Process RPM and DEB files for release
     DEB_OPT=""
-    if [ -d debian]; then
+    if [ -d debian ]; then
         #only set a debian release if we actually have a debian directory
         DEB_OPT="-d 1"
     fi
