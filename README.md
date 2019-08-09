@@ -51,6 +51,8 @@ Currently, these hooks do the following:
 
 ## Make a release in a repository
 
+**NOTE: See the `make-release` script fo doing this for all packages. Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
+
 The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
