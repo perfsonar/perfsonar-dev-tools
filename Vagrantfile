@@ -44,6 +44,7 @@ Vagrant.configure("2") do |config|
                 perl\
                 perl-devel\
                 python\
+                quilt\
                 git
         SHELL
       end

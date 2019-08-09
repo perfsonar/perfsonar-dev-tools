@@ -48,3 +48,41 @@ Currently, these hooks do the following:
 ```
 % /path/to/tools/bin/install-git-hooks ~/work/my-repository`
 ```
+
+## Make a release in a repository
+
+The `make-repo-release` program try to release new packages from a 
+perfSONAR repository.  It always  takes  an  argument: the VERSION to be
+released. There is another mandatory option, `-r` which states the RELNUM.
+It has additional options which ore documented in the script `-h`.
+
+This program enforces the [version numbering as specified in our policy](https://github.com/perfsonar/project/wiki/Versioning
+"perfSONAR package numbering").
+
+### Usage examples
+
+Making a beta release:
+```
+% cd ~/work/my-repository
+% /path/to/tools/bin/make-repo-release -r 0.b1.2 -d 1 -g 4.2.0
+```
+
+Making a final release:
+```
+% cd ~/work/my-repository
+% /path/to/tools/bin/make-repo-release -r 1 -d 1 -g 4.2.0
+```
+
+Making a RPM only release:
+```
+% cd ~/work/my-repository
+% /path/to/tools/bin/make-repo-release -r 2 -g 4.2.0
+```
+
+Making a Debian only release:
+```
+% cd ~/work/my-repository
+% /path/to/tools/bin/make-repo-release -r 1 -d 2 -g 4.2.0
+```
+
+

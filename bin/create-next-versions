@@ -16,17 +16,20 @@ THIS_BRANCH=$(git branch -l | awk '$1 == "*" { print $2 }')
 # Create new branches from this one if they don't already exist
 
 CHANGED=false
+RELNUM="0.a0.0"
 
 for VERSION in $("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
 do
     VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')" #trim whitespace
-    HAS_BRANCH=$(git branch --list -r origin/${VERSION})
+    HAS_BRANCH=$(git branch --list -r "origin/${VERSION}")
     if [ -n "$HAS_BRANCH" ]; then
         narrate "Repo already has a branch ${VERSION}"
         continue
     fi
     git checkout -b "${VERSION}"
-    rpm_set_version $VERSION 0.0.a1 || :
+    rpm_set_version "$VERSION" "$RELNUM" || :
+    deb_set_new_version "$VERSION" "$RELNUM" || :
+    git commit -m "Preparing packaging for next version: v$VERSION-$RELNUM"
     git push origin "${VERSION}"
     git branch --set-upstream-to="origin/${VERSION}" "${VERSION}"
     CHANGED=true
