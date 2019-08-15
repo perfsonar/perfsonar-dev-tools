@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# Perform functions on branches for releasing packages.
+# 
+# Usage:
+#       make-release VERSION RELNUM
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+# Get version from parameter
+VERSION="$1"
+if [ -z "$VERSION" ]; then
+    die "Must specify VERSION as first command-line option"
+fi
+
+TEMPDIR=`mktemp -d`
+narrate "Creating workspace in $TEMPDIR"
+
+# Go through all projects
+for PROJECT in "${PROJECTS[@]}"
+do
+    cd "$TEMPDIR"
+    # checkout clean copy
+    narrate ""
+    narrate "[${PROJECT}]"
+    GIT_URL="https://github.com/perfsonar/${PROJECT}"
+    narrate "Downloading $GIT_URL"
+    git clone "$GIT_URL" "$PROJECT"
+    
+    #get branch
+    cd "$PROJECT"
+    git fetch
+    narrate "Fetching branch ${VERSION}"
+    HAS_BRANCH=$(git branch --list -r "origin/${VERSION}")
+    if [ -z "$HAS_BRANCH" ]; then
+        warn "$PROJECT does not contain branch $VERSION, skipping"
+        continue
+    fi
+    
+    # checkout branch
+    git checkout "$VERSION"
+    
+    ${WHEREAMI}/close-branch
+
+done
+
+# Clean-up TEMPDIR
+echo ""
+rm -rf "$TEMPDIR"
+echo "[SUCCESS]"
