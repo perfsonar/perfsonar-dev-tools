@@ -133,8 +133,8 @@ deb_set_new_version()
     git add debian/changelog
 
     # Update gbp.conf to new branch
-    sed '/^upstream-branch =/ s/.*/upstream-branch = $VERSION/' debian/gbp.conf > "$TMP_FILE"
-    sed '/^debian-branch =/ s/.*/debian-branch = $VERSION/' "$TMP_FILE" > debian/gbp.conf
+    sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" debian/gbp.conf > "$TMP_FILE"
+    sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > debian/gbp.conf
     /bin/rm "$TMP_FILE"
     git add debian/gbp.conf
 }
