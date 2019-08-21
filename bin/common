@@ -108,7 +108,7 @@ deb_set_new_version()
 {
     [ "$1" ] && VERSION="$1" || error "Version not provided"
     [ "$2" ] && RELNUM="$2" || error "Release Number not provided"
-    if [ "0" = "${relnum%%.*}" ]; then
+    if [ "0" = "${RELNUM%%.*}" ]; then
         # Starting with a "0.", that's an alpha, beta or RC
         DEB_VERSION="$VERSION~${RELNUM#*\.}"
     else
@@ -117,15 +117,17 @@ deb_set_new_version()
     fi
     PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
     TMP_FILE=`mktemp`
-    if [ "0" = "${VERSION##*.}" ]; then
-        # Minor release always has ".0" at the end
-        PS_REPO="perfsonar-minor-snapshot"
-    else
-        # Patch release
-        PS_REPO="perfsonar-patch-snapshot"
+    PS_REPO="perfsonar-${VERSION%.*}-snapshot"
+    DEB_DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
+    # Replace debian/changelog signature line with commiter or DEBEMAIL info
+    # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
+    if [ -z "$DEBEMAIL" ]; then
+        DEBEMAIL=`git config user.email`
     fi
-    DEB_DATE=`LANG=C date "+\%a, \%d \%b \%Y \%T \%z"`
-    echo -e "$PKG_NAME ($DEB_VERSION-1) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- perfSONAR developers <debian@perfsonar.net>  $DEB_DATE" > "$TMP_FILE"
+    if [ -z "$DEBFULLNAME" ]; then
+        DEBFULLNAME=`git config user.name`
+    fi
+    echo "$PKG_NAME ($DEB_VERSION-1) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
     cat debian/changelog >> "$TMP_FILE"
     /bin/mv "$TMP_FILE" debian/changelog
     git add debian/changelog
