@@ -115,6 +115,10 @@ deb_set_new_version()
         # That's a final
         DEB_VERSION="$VERSION"
     fi
+    if ! grep -qs '(native)' debian/source/format ; then
+        # Only non native packages use the "-1" suffix
+        DEB_VERSION="$DEB_VERSION-1"
+    fi
     PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
     TMP_FILE=`mktemp`
     PS_REPO="perfsonar-${VERSION%.*}-snapshot"
@@ -127,7 +131,7 @@ deb_set_new_version()
     if [ -z "$DEBFULLNAME" ]; then
         DEBFULLNAME=`git config user.name`
     fi
-    echo "$PKG_NAME ($DEB_VERSION-1) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
+    echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
     cat debian/changelog >> "$TMP_FILE"
     /bin/mv "$TMP_FILE" debian/changelog
     git add debian/changelog
