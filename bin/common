@@ -123,7 +123,6 @@ deb_set_new_version()
         # Only non native packages use the "-1" suffix
         DEB_VERSION="$DEB_VERSION-1"
     fi
-    PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
     TMP_FILE=`mktemp`
     PS_REPO="perfsonar-${VERSION%.*}-snapshot"
     DEB_DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
@@ -135,6 +134,32 @@ deb_set_new_version()
     if [ -z "$DEBFULLNAME" ]; then
         DEBFULLNAME="perfSONAR developers"
     fi
+
+    if [[ "${PWD##*\/}" == "pscheduler" ]]; then
+        MYCWD=`pwd`
+        # If we're in the pscheduler repo, we must loop on all packages
+        for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
+            if [ -d "$dir/$dir" ]; then
+                cd "$dir/$dir"
+            elif [ -d "$dir/pscheduler" ]; then
+                cd "$dir/pscheduler"
+            else
+                cd "$dir"
+            fi
+            if [ -f debian/changelog ]; then
+                deb_change_files
+            fi
+            cd "$MYCWD"
+        done
+    else
+        deb_change_files
+    fi
+}
+
+# Set debian/ dir specific files
+deb_change_files()
+{
+    PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
     echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
     cat debian/changelog >> "$TMP_FILE"
     /bin/mv "$TMP_FILE" debian/changelog

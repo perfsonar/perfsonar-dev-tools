@@ -156,7 +156,7 @@ if [ -n "$debrel" ]; then
         else
             error "$dir doesn't look like a Debian packaging tree, I cannot find debian/changelog or debian/gbp.conf."
         fi
-        cd $MYCWD
+        cd "$MYCWD"
     done
     DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' $GBP_CONF`
     if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
