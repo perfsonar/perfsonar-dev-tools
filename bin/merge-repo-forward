@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Merge an new patch release into an existing higher version branch
+# We must be on the higher branch to run this
+#
+# Usage (if b>d):
+#   git checkout a.b.c
+#   ../perfsonar-dev-tools/bin/merge-repo-forward a.d.e
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+# Get version parameter
+VERSION=$1
+if [ -z "$VERSION" ]; then
+    die "Must specify VERSION as command-line option"
+fi
+
+# Initialisations
+TEMPFILE=`mktemp`
+NEXT_VERSION=`git branch --show-current`
+if [[ $VERSION > $NEXT_VERSION ]]; then
+    die "Current branch ($NEXT_VERSION) is lower than $VERSION"
+fi
+
+set -x
+# Save RPM relnum
+if [ -f *.spec ]; then
+    RPM_RELNUM=`awk '/^%define perfsonar_auto_relnum / {print $3}' *.spec`
+elif [ -f rpm/*.spec ]; then
+    # esmond case
+    RPM_RELNUM=`awk '/^%define perfsonar_auto_relnum / {print $3}' rpm/*.spec`
+elif [ -f configure.ac ]; then
+    # owamp and I2util cases
+    RPM_RELNUM=`perl -ne 'do {print $1; last} if /^AC_SUBST\(PATCH_LEVEL,[[:space:]]*([^[:space:]]+)\)/' configure.ac`
+else
+    die "The RPM relnum cannot be saved on this branch"
+fi
+
+# Save debian/changelog changes local to this minor branch
+DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' debian/changelog`
+perl -ne "print unless /$DEB_PKG \(${VERSION%.*}/ .. eof" debian/changelog > $TEMPFILE
+
+# Try to merge patch branch into minor branch
+if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
+    # All is fine!
+    rm $TEMPFILE
+    exit 0
+else
+    # TODO: How to solve RPM specfile and Makefile conflicts?
+
+    # Get debian confliciting files from meaningful branches
+    git checkout $NEXT_VERSION debian/gbp.conf
+    # debian/changelog must always be ordered by version number (not by date)
+    git checkout $VERSION debian/changelog
+    # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
+    perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-${VERSION%.*}; / .. eof" debian/changelog
+    # And bring back saved changes
+    cat debian/changelog >> $TEMPFILE
+    /bin/mv -f $TEMPFILE debian/changelog
+    git add debian/changelog
+    # Then, try to finalise merge
+    git commit -m "Merging $VERSION into $NEXT_VERSION"
+fi

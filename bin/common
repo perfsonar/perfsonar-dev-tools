@@ -86,20 +86,24 @@ repo_has_branch()
 # Replace auto-generated version and relnum in RPM spec files
 rpm_set_version()
 {   
-    [ "$1" ] && export VERSION="$1" || die "Version not provided"
-    [ "$2" ] && export RELNUM="$2" || RELNUM="1"
+    [ "$1" ] && export MY_VERSION="$1" || die "Version not provided"
+    [ "$2" ] && export MY_RELNUM="$2" || MY_RELNUM="1"
     # sed -i behaves differently on BSD, so using temporary file
     export TMP_FILE=`mktemp`
     # Update .spec version
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update .spec relnum
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+/%define perfsonar_auto_relnum ${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+/%define perfsonar_auto_relnum ${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile version
-    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile relnum
-    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
-    # Update pom.xml version - TODO: Uncomment in 4.2.0
-    find . -type f -name pom.xml -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update configure.ac version
+    find . -type f -name configure.ac -exec sh -c 'for f do sed -E "s/^AC_INIT\((owamp|I2util),[[:space:]]*[[:digit:].]+,/AC_INIT(\1, ${MY_VERSION},/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update configure.ac relnum
+    find . -type f -name configure.ac -exec sh -c 'for f do sed -E "s/^AC_SUBST\(PATCH_LEVEL,[[:space:]]*[[:alnum:].]+\)/AC_SUBST(PATCH_LEVEL, ${MY_RELNUM})/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    # Update pom.xml version
+    find . -type f -name pom.xml -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${MY_VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     /bin/rm -f "$TMP_FILE"
 }
 
@@ -123,13 +127,13 @@ deb_set_new_version()
     TMP_FILE=`mktemp`
     PS_REPO="perfsonar-${VERSION%.*}-snapshot"
     DEB_DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
-    # Replace debian/changelog signature line with commiter or DEBEMAIL info
+    # Replace debian/changelog signature line with generic or DEBEMAIL info
     # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
     if [ -z "$DEBEMAIL" ]; then
-        DEBEMAIL=`git config user.email`
+        DEBEMAIL="debian@perfsonar.net"
     fi
     if [ -z "$DEBFULLNAME" ]; then
-        DEBFULLNAME=`git config user.name`
+        DEBFULLNAME="perfSONAR developers"
     fi
     echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
     cat debian/changelog >> "$TMP_FILE"

@@ -3,7 +3,7 @@
 # Perform functions on branches for releasing packages.
 # 
 # Usage:
-#       make-release VERSION RELNUM
+#       close-release VERSION
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"

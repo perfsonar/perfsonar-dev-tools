@@ -82,16 +82,9 @@ if [[ -z "$VERSION" || -z "$relnum" ]]; then
 fi
 
 # Check current branch against version: must be the same
-BRANCH=`git branch --list | awk '/^\* .*$/ {print $2}'`
+BRANCH=`git branch --show-current`
 if [[ "$force" == "false" && "$VERSION" != "$BRANCH" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
-fi
-if [[ "0" == "${BRANCH##*.}" ]]; then
-    # If the last digit of the branch number is 0, we are on a minor release
-    export DEB_REPO=perfsonar-minor-staging
-else
-    # otherwise we are on a patch release
-    export DEB_REPO=perfsonar-patch-staging
 fi
 
 # The versions and tags need to conform to our policy detailed at https://github.com/perfsonar/project/wiki/Versioning
@@ -188,11 +181,7 @@ if [ -n "$debrel" ]; then
     fi
 
     # Preparing debian/changelog
-    if [[ "0" == "${BRANCH##*.}" ]]; then
-        DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-minor-staging; urgency=low"
-    else
-        DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-patch-staging; urgency=low"
-    fi
+    DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-${VERSION%.*}; urgency=low"
     # If it's a DEB only release
     if [ -z "$RPM_VERSION" ]; then
         # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
@@ -204,10 +193,10 @@ if [ -n "$debrel" ]; then
     # Replace debian/changelog signature line with commiter or DEBEMAIL info
     # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
     if [ -z "$DEBEMAIL" ]; then
-        DEBEMAIL=`git config user.email`
+        DEBEMAIL="debian@perfsonar.net"
     fi
     if [ -z "$DEBFULLNAME" ]; then
-        DEBFULLNAME=`git config user.name`
+        DEBFULLNAME="perfSONAR developers"
     fi
     # We use a date format that is working on both Linux and BSD
     DATE=`LANG=C date "+%a, %d %b %Y %T %z"`

@@ -14,7 +14,6 @@ fi
 
 #make temp dir
 TEMPDIR=`mktemp -d`
-TEMPFILE=`mktemp`
 narrate "Creating workspace in $TEMPDIR"
 
 #Init failed merges
@@ -50,7 +49,7 @@ do
         die "Unable to call ${WHEREAMI}/next-versions. Make sure you are executing this script with full path"
     fi
     
-    #TODO:MERGE FORWARD INTO NEXT MAJOR release if exists
+    #TODO: MERGE FORWARD INTO NEXT MAJOR release if exists
     for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${VERSION}")
     do
         # checkout branches since git sometimes needs this to merge
@@ -59,27 +58,11 @@ do
         HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
         if [ -n "$HAS_BRANCH" ]; then
             git checkout $NEXT_VERSION
-            MERGE_FAILED=0
-            # Save debian/changelog local changes
-            DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' debian/changelog`
-            perl -ne "print unless /$DEB_PKG \(${VERSION%.*}/ .. eof()" debian/changelog > $TEMPFILE
-            # Try merge
-            git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION || MERGE_FAILED=1
-            if [ $MERGE_FAILED -eq 1 ]; then
-                # Get debian confliciting files from meaningful branches
-                git checkout $VERSION debian/changelog
-                git checkout $NEXT_VERSION debian/gbp.conf
-                # And bring back saved changes
-                cat debian/changelog >> $TEMPFILE
-                /bin/cp -f $TEMPFILE debian/changelog
-                git add debian/changelog
-                # Then, try to finalise merge
-                git commit -m "Merging $VERSION into $NEXT_VERSION" || MERGE_FAILED=2
-            fi
-            if [ $MERGE_FAILED -eq 2 ]; then
-                FAILED_MERGES="${FAILED_MERGES} ${PROJECT}"
-            else
+            if ./merge-repo-forward $VERSION; then
+                narrate "Pushing changes"
                 git push
+            else
+                FAILED_MERGES="${FAILED_MERGES} ${PROJECT}"
             fi
         fi
     done
@@ -88,7 +71,6 @@ done
 #Clean-up TEMPDIR
 echo ""
 rm -rf $TEMPDIR
-rm -f $TEMPFILE
 
 #report result
 if [ -n "$FAILED_MERGES" ]; then
