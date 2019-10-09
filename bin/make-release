@@ -65,10 +65,11 @@ do
         DEB_OPT="-d 1"
     fi
     ${WHEREAMI}/make-repo-release -r "$RELNUM" $DEB_OPT "$VERSION"
-
-    # Push changes away
-    git push
-    git push --tags
+    if [ $? -eq 0 ]; then
+        # Push changes away
+        git push
+        git push --tags
+    fi
 done
 
 # Clean-up TEMPDIR

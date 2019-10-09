@@ -82,7 +82,7 @@ if [[ -z "$VERSION" || -z "$relnum" ]]; then
 fi
 
 # Check current branch against version: must be the same
-BRANCH=`git branch --show-current`
+BRANCH=`git branch | grep \* | cut -d ' ' -f2`
 if [[ "$force" == "false" && "$VERSION" != "$BRANCH" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
 fi
@@ -296,13 +296,20 @@ else
         GITMSG="$GITMSG - DEB $DEB_VERSION"
     fi
     git commit ${commit_a} -m "$GITMSG"
+    
+    #switch to master and merge
+    git checkout master
+    git merge --no-edit $BRANCH
+    if [ ! $? -eq 0 ]; then
+        error "Unable to merge $BRANCH into master, skipping tags"
+    fi
+    
     if [ -n "$RPM_VERSION" ]; then
         git tag "${GIT_TAG}"
     fi
     if [ -n "$DEB_VERSION" ]; then
         git tag "${DEBIAN_TAG}"
     fi
-    echo
     echo "If you're happy with the commit and tag(s) above, you just need to push that away!"
 fi
 
