@@ -81,7 +81,7 @@ if [[ -z "$VERSION" || -z "$relnum" ]]; then
 fi
 
 # Check current branch against version: must be the same or must be master
-BRANCH=`git branch --show-current`
+BRANCH=`git branch | grep \* | cut -d ' ' -f2`
 if [[ "$force" == "false" && "$VERSION" != "$BRANCH" && "$BRANCH" != "master" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
 fi
@@ -130,7 +130,7 @@ git pull
 # Make sure we don't change anything in submodules
 git submodule deinit -f .
 # TODO: how can we re-init submodules that were present at first?
-BRANCH=`git branch --show-current`
+BRANCH=`git branch | grep \* | cut -d ' ' -f2`
 
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then

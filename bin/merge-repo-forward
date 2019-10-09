@@ -19,7 +19,7 @@ fi
 # Initialisations
 MINOR=${VERSION%.*}
 TEMPFILE=`mktemp`
-NEXT_VERSION=`git branch --show-current`
+BRANCH=`git branch | grep \* | cut -d ' ' -f2`
 if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
 fi
