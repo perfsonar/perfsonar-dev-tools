@@ -19,7 +19,7 @@ fi
 # Initialisations
 MINOR=${VERSION%.*}
 TEMPFILE=`mktemp`
-NEXT_VERSION=`git branch | grep \* | cut -d ' ' -f2`
+NEXT_VERSION=`git branch --show-current`
 if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
 fi
@@ -41,6 +41,8 @@ if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
 else
     if git tag -l | grep -qE "^v${VERSION}$"; then
         # We have a tag from this branch, it means we need to make some special changes
+        # Make sure we don't change anything in submodules
+        git submodule deinit -f .
         # RPM relnum must be kept, and NEXT_VERSION must be used, not the one from the merged branch
         # In specfiles
         perl -i -0pe "s/<<<<<<< HEAD

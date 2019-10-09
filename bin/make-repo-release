@@ -55,7 +55,6 @@ dry_run=false
 force=false
 no_git=false
 quilt_refresh=true
-unset commit_a
 
 # Parsing options
 while getopts "d:fgnqr:v" OPT; do
@@ -81,9 +80,9 @@ if [[ -z "$VERSION" || -z "$relnum" ]]; then
     error "VERSION and relnum (-r) must be given to make a release."
 fi
 
-# Check current branch against version: must be the same
-BRANCH=`git branch | grep \* | cut -d ' ' -f2`
-if [[ "$force" == "false" && "$VERSION" != "$BRANCH" ]]; then
+# Check current branch against version: must be the same or must be master
+BRANCH=`git branch --show-current`
+if [[ "$force" == "false" && "$VERSION" != "$BRANCH" && "$BRANCH" != "master" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
 fi
 
@@ -124,6 +123,14 @@ else
         error "For a dual RPM and DEB release, debrel must be 1 as it's the first package release for this version."
     fi
 fi
+
+# Checks need to be on the $VERSION branch
+git checkout $VERSION
+git pull
+# Make sure we don't change anything in submodules
+git submodule deinit -f .
+# TODO: how can we re-init submodules that were present at first?
+BRANCH=`git branch --show-current`
 
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then
@@ -226,10 +233,7 @@ fi
 
 # Do the actual RPM changes
 echo -e "\033[1mRPM Processing in progress…\033[0m"
-# Make sure we don't change versions in submodules
-git submodule deinit -f .
 rpm_set_version "$VERSION" "$relnum"
-# TODO: how can we re-init submodules that were present at first?
 
 # Do the actual DEB changes
 if [ -n "$debrel" ]; then
@@ -295,15 +299,18 @@ else
     if [ -n "$DEB_VERSION" ]; then
         GITMSG="$GITMSG - DEB $DEB_VERSION"
     fi
-    git commit ${commit_a} -m "$GITMSG"
+    git commit -m "$GITMSG"
     
     #switch to master and merge
     git checkout master
-    git merge --no-edit $BRANCH
-    if [ ! $? -eq 0 ]; then
-        error "Unable to merge $BRANCH into master, skipping tags"
+    if ! git merge --no-ff --no-commit $VERSION; then
+        error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
     fi
+    # We must keep debian/gbp.conf from master
+    git checkout master -- debian/gbp.conf
+    git commit -m "Merge branch $VERSION"
     
+    # Adding tags
     if [ -n "$RPM_VERSION" ]; then
         git tag "${GIT_TAG}"
     fi
