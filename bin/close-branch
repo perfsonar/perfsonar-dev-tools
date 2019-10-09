@@ -11,8 +11,8 @@ WHEREAMI=$(dirname $0)
 REPO_TOP=$(repo_top "${WHERE}")
 cd "${REPO_TOP}"
 
-CLOSE_FILE="${REPO_TOP}/BRANCH-CLOSED"
-CLOSED=$(git branch -l | awk '$1 == "*" { print $2 }')
+CLOSE_FILE="BRANCH-CLOSED"
+CLOSED=$(git branch | grep \* | cut -d ' ' -f2)
 
 if [ -e "${CLOSE_FILE}" ]
 then
