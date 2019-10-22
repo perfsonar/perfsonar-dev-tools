@@ -2,6 +2,10 @@
 #
 # Close the current branch of the current repository.
 #
+# Can be called with a specific version number, as:
+# MYNEXTVERSIONS="4.2.3" ../perfsonar-dev-tools/bin/close-branch
+# MYNEXTVERSIONS="4.2.3" ../perfsonar-dev-tools/bin/create-next-versions
+#
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"
@@ -18,7 +22,9 @@ THIS_BRANCH=$(git branch -l | awk '$1 == "*" { print $2 }')
 CHANGED=false
 RELNUM="0.a0.0"
 
-for VERSION in $("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
+# If MYNEXTVERSIONS exists, we use it instead of the next-versions script
+[ "$MYNEXTVERSIONS" ] && VERSIONS="$MYNEXTVERSIONS" || VERSIONS=$("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
+for VERSION in $VERSIONS
 do
     VERSION="$(echo "${VERSION}" | tr -d '[:space:]')" #trim whitespace
     HAS_BRANCH=$(git branch --list -r "origin/${VERSION}")
@@ -37,8 +43,3 @@ do
     CHANGED=true
 done
 
-if ${CHANGED}
-then
-    narrate Pushing changes
-    git push --all
-fi

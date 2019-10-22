@@ -140,18 +140,19 @@ deb_set_new_version()
         # If we're in the pscheduler repo, we must loop on all packages
         for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
             if [ -d "$dir/$dir" ]; then
-                cd "$dir/$dir"
+                MYDIR="$dir/$dir"
             elif [ -d "$dir/pscheduler" ]; then
-                cd "$dir/pscheduler"
+                MYDIR="$dir/pscheduler"
             else
-                cd "$dir"
+                MYDIR="$dir"
             fi
-            if [ -f debian/changelog ]; then
+            if [ -f "$MYDIR/debian/changelog" ]; then
                 deb_change_files
             fi
             cd "$MYCWD"
         done
     else
+        MYDIR="."
         deb_change_files
     fi
 }
@@ -159,16 +160,16 @@ deb_set_new_version()
 # Set debian/ dir specific files
 deb_change_files()
 {
-    PKG_NAME=`awk 'NR==1 {print $1}' debian/changelog`
+    PKG_NAME=`awk 'NR==1 {print $1}' "$MYDIR/debian/changelog"`
     echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
-    cat debian/changelog >> "$TMP_FILE"
-    /bin/mv "$TMP_FILE" debian/changelog
-    git add debian/changelog
+    cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
+    /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
+    git add "$MYDIR/debian/changelog"
 
     # Update gbp.conf to new branch
-    sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" debian/gbp.conf > "$TMP_FILE"
-    sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > debian/gbp.conf
+    sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$MYDIR/debian/gbp.conf" > "$TMP_FILE"
+    sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$MYDIR/debian/gbp.conf"
     /bin/rm "$TMP_FILE"
-    git add debian/gbp.conf
+    git add "$MYDIR/debian/gbp.conf"
 }
 
