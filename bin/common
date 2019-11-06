@@ -146,9 +146,7 @@ deb_set_new_version()
             else
                 MYDIR="$dir"
             fi
-            if [ -f "$MYDIR/debian/changelog" ]; then
-                deb_change_files
-            fi
+            deb_change_files
             cd "$MYCWD"
         done
     else
@@ -160,16 +158,20 @@ deb_set_new_version()
 # Set debian/ dir specific files
 deb_change_files()
 {
-    PKG_NAME=`awk 'NR==1 {print $1}' "$MYDIR/debian/changelog"`
-    echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
-    cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
-    /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
-    git add "$MYDIR/debian/changelog"
+    if [ -f "$MYDIR/debian/changelog" ]; then
+        PKG_NAME=`awk 'NR==1 {print $1}' "$MYDIR/debian/changelog"`
+        echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
+        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
+        /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
+        git add "$MYDIR/debian/changelog"
+    fi
 
     # Update gbp.conf to new branch
-    sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$MYDIR/debian/gbp.conf" > "$TMP_FILE"
-    sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$MYDIR/debian/gbp.conf"
-    /bin/rm "$TMP_FILE"
-    git add "$MYDIR/debian/gbp.conf"
+    if [ -f "$MYDIR/debian/gbp.conf" ]; then
+        sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$MYDIR/debian/gbp.conf" > "$TMP_FILE"
+        sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$MYDIR/debian/gbp.conf"
+        /bin/rm "$TMP_FILE"
+        git add "$MYDIR/debian/gbp.conf"
+    fi
 }
 
