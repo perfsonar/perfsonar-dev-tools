@@ -19,9 +19,15 @@ fi
 # Initialisations
 MINOR=${VERSION%.*}
 TEMPFILE=`mktemp`
-BRANCH=`git branch | grep \* | cut -d ' ' -f2`
+NEXT_VERSION=`git branch | grep \* | cut -d ' ' -f2`
 if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
+fi
+
+# Check if a tag from this branch already exists
+if git tag -l | grep -qE "^v${VERSION}$"; then
+    echo "A git tag already exists from this branch, I'll be merging the tag."
+    VERSION="v$VERSION"
 fi
 
 # RPM files
@@ -39,7 +45,7 @@ if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
     rm $TEMPFILE
     exit 0
 else
-    if git tag -l | grep -qE "^v${VERSION}$"; then
+    if git tag -l | grep -qE "^${VERSION}$"; then
         # We have a tag from this branch, it means we need to make some special changes
         # Make sure we don't change anything in submodules
         git submodule deinit -f .
@@ -51,7 +57,7 @@ else
 =======
 %define perfsonar_auto_version ${VERSION#v}(|
 %define perfsonar_auto_relnum .*)
->>>>>>> ${VERSION#v}
+>>>>>>> ${VERSION}
 /%define perfsonar_auto_version $NEXT_VERSION\1
 /" $SPECFILES
         if ! grep -sE "^<<<<<<< HEAD$" $SPECFILES; then
@@ -61,14 +67,14 @@ else
         if [ $MAKEFILES ]; then
             # In Makefiles
             perl -i -0pe "s/<<<<<<< HEAD
-    PERFSONAR_AUTO_VERSION=$NEXT_VERSION(|
-    PERFSONAR_AUTO_RELNUM=.*)
-    =======
-    PERFSONAR_AUTO_VERSION=${VERSION#v}(|
-    PERFSONAR_AUTO_RELNUM=.*)
-    >>>>>>> ${VERSION#v}
-    /PERFSONAR_AUTO_VERSION=$NEXT_VERSION\1
-    /" $MAKEFILES
+PERFSONAR_AUTO_VERSION=$NEXT_VERSION(|
+PERFSONAR_AUTO_RELNUM=.*)
+=======
+PERFSONAR_AUTO_VERSION=${VERSION#v}(|
+PERFSONAR_AUTO_RELNUM=.*)
+>>>>>>> ${VERSION}
+/PERFSONAR_AUTO_VERSION=$NEXT_VERSION\1
+/" $MAKEFILES
             if ! grep -sE "^<<<<<<< HEAD$" $MAKEFILES; then
                 # All conflicts are solved
                 git add $MAKEFILES
@@ -77,12 +83,12 @@ else
         if [ $CONFFILES ]; then
             # In configure.ac (TODO: add i2util support)
             perl -i -0pe "s/<<<<<<< HEAD
-    AC_INIT\(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu\)
-    =======
-    AC_INIT\(owamp, ${VERSION#v}, owamp-bugs\@internet2.edu\)
-    >>>>>>> ${VERSION#v}
-    /AC_INIT(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu)
-    /" $CONFFILES
+AC_INIT\(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu\)
+=======
+AC_INIT\(owamp, ${VERSION#v}, owamp-bugs\@internet2.edu\)
+>>>>>>> ${VERSION}
+/AC_INIT(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu)
+/" $CONFFILES
             if ! grep -sE "^<<<<<<< HEAD$" $CONFFILES; then
                 # All conflicts are solved
                 git add $CONFFILES
@@ -92,7 +98,7 @@ else
         # Keep the gbp settings from the current branch
         git checkout $NEXT_VERSION debian/gbp.conf
         # debian/changelog must always be ordered by version number (not by date)
-        git checkout v${VERSION} debian/changelog
+        git checkout ${VERSION} debian/changelog
         # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
         perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" debian/changelog
         # And bring back saved changes
