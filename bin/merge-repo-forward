@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Merge an new patch release into an existing higher version branch
 # We must be on the higher branch to run this
@@ -18,7 +18,6 @@ fi
 
 # Initialisations
 MINOR=${VERSION%.*}
-TEMPFILE=`mktemp`
 NEXT_VERSION=`git branch | grep \* | cut -d ' ' -f2`
 if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
@@ -35,18 +34,14 @@ SPECFILES=`find . -type f -name "*.spec*"`
 MAKEFILES=`find . -type f -name Makefile`
 CONFFILES=`find . -type f -name configure.ac`
 
-# Save debian/changelog changes local to this minor branch
-DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' debian/changelog`
-perl -ne "print unless /$DEB_PKG \($MINOR/ .. eof" debian/changelog > $TEMPFILE
-
+# TODO: does this work when merging a non released branch?
 # Try to merge patch branch into minor branch
 if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
     # All is fine!
-    rm $TEMPFILE
     exit 0
 else
     if git tag -l | grep -qE "^${VERSION}$"; then
-        # We have a tag from this branch, it means we need to make some special changes
+        # We have a tag from this version, it means we need to make some special changes
         # Make sure we don't change anything in submodules
         git submodule deinit -f .
         # RPM relnum must be kept, and NEXT_VERSION must be used, not the one from the merged branch
@@ -64,7 +59,7 @@ else
             # All conflicts are solved
             git add $SPECFILES
         fi
-        if [ $MAKEFILES ]; then
+        if [ "$MAKEFILES" ]; then
             # In Makefiles
             perl -i -0pe "s/<<<<<<< HEAD
 PERFSONAR_AUTO_VERSION=$NEXT_VERSION(|
@@ -80,7 +75,7 @@ PERFSONAR_AUTO_RELNUM=.*)
                 git add $MAKEFILES
             fi
         fi
-        if [ $CONFFILES ]; then
+        if [ "$CONFFILES" ]; then
             # In configure.ac (TODO: add i2util support)
             perl -i -0pe "s/<<<<<<< HEAD
 AC_INIT\(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu\)
@@ -95,19 +90,29 @@ AC_INIT\(owamp, ${VERSION#v}, owamp-bugs\@internet2.edu\)
             fi
         fi
 
-        # Keep the gbp settings from the current branch
-        git checkout $NEXT_VERSION debian/gbp.conf
-        # debian/changelog must always be ordered by version number (not by date)
-        git checkout ${VERSION} debian/changelog
-        # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
-        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" debian/changelog
-        # And bring back saved changes
-        cat debian/changelog >> $TEMPFILE
-        /bin/mv -f $TEMPFILE debian/changelog
-        git add debian/changelog
+        if [[ "${PWD##*\/}" == "pscheduler" ]]; then
+            MYCWD=`pwd`
+            # If we're in the pscheduler repo, we must loop on all packages
+            for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
+                if [ -d "$dir/$dir" ]; then
+                    MYDIR="$dir/$dir"
+                elif [ -d "$dir/pscheduler" ]; then
+                    MYDIR="$dir/pscheduler"
+                else
+                    MYDIR="$dir"
+                fi
+                deb_correct_changelog
+                cd "$MYCWD"
+            done
+        else
+            MYDIR="."
+            deb_correct_changelog
+        fi
+
         # Then, try to finalise merge
         git commit -m "Merging $VERSION into $NEXT_VERSION"
     else
         die "Automatic merge failed, need to process manually."
     fi
 fi
+

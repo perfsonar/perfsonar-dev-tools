@@ -159,8 +159,8 @@ deb_set_new_version()
 deb_change_files()
 {
     if [ -f "$MYDIR/debian/changelog" ]; then
-        PKG_NAME=`awk 'NR==1 {print $1}' "$MYDIR/debian/changelog"`
-        echo "$PKG_NAME ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+        echo "$DEB_PKG ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
         cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
         /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
         git add "$MYDIR/debian/changelog"
@@ -172,6 +172,28 @@ deb_change_files()
         sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$MYDIR/debian/gbp.conf"
         /bin/rm "$TMP_FILE"
         git add "$MYDIR/debian/gbp.conf"
+    fi
+}
+
+# Correct debian/changelog after a merge forward
+deb_correct_changelog()
+{
+    if [ -f "$MYDIR/debian/changelog" ]; then
+        TMP_FILE=`mktemp`
+        # Save debian/changelog changes local to this branch
+        git checkout "$NEXT_VERSION" "$MYDIR/debian/changelog"
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+        perl -ne "print unless /$DEB_PKG \($MINOR/ .. eof" "$MYDIR/debian/changelog" > "$TMP_FILE"
+        # Keep the gbp settings from the current branch
+        git checkout "$NEXT_VERSION" "$MYDIR/debian/gbp.conf"
+        # debian/changelog must always be ordered by version number (not by date)
+        git checkout "$VERSION" "$MYDIR/debian/changelog"
+        # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
+        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" "$MYDIR/debian/changelog"
+        # And bring back saved changes
+        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
+        /bin/mv -f "$TMP_FILE" "$MYDIR/debian/changelog"
+        git add "$MYDIR/debian/changelog"
     fi
 }
 
