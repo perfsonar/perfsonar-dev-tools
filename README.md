@@ -1,27 +1,5 @@
 # Development Tools for perfSONAR Developers
 
-## Git Branch Closer
-
-The `close-branch` program is used on release to prepare for
-development of the next release by doing the following:
-
- * Creating branches for the next major, minor and bugfix releases if
-   they do not already exist.  (For example, closing the `1.2.3`
-   branch will create `2.0.0`, `1.3.0` and `1.2.4`.)
-
- * Adding a `BRANCH-CLOSED` file to the root of the repository.  This is
-   used as a visual cue and hint to the Git hooks described below that
-   commits should not be added to the current branch.
-
-### Usage Examples
-
-```
-% cd ~/work/my-repository
-% git checkout 1.2.3
-% /path/to/tools/bin/close-branch
-```
-
-
 ## Git Hook Installer
 
 The `install-git-hooks` program installs Git client-side hooks to
@@ -49,10 +27,14 @@ Currently, these hooks do the following:
 % /path/to/tools/bin/install-git-hooks ~/work/my-repository`
 ```
 
-## Make a release in a repository
+# Release support scripts
 
-**NOTE: See the `make-release` script fo doing this for all packages. Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
+These are the scripts one should use to deal with making a release and preparing repositories for the subsequent release.
 
+## To make a release
+**NOTE: See the `make-release` script for doing this for all packages. Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
+
+### make-release
 The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
@@ -61,7 +43,17 @@ It has additional options which ore documented in the script `-h`.
 This program enforces the [version numbering as specified in our policy](https://github.com/perfsonar/project/wiki/Versioning
 "perfSONAR package numbering").
 
-### Usage examples
+- Loop on all repos/projects
+  - Clone repo
+  - Call `make-repo-release`
+  - Do a git **push** with tags if succesful
+
+### make-repo-release
+- Release final, RC, beta or alpha of packages existing in a single repository
+- Change RPM and debian files
+- Do a git commit and add tags
+
+#### Usage examples
 
 Making a beta release:
 ```
@@ -87,4 +79,77 @@ Making a Debian only release:
 % /path/to/tools/bin/make-repo-release -r 1 -d 2 -g 4.2.0
 ```
 
+## To close a release branch
+The `close-branch` program is used on release to prepare for
+development of the next release by doing the following:
+
+ * Creating branches for the next major, minor and bugfix releases if
+   they do not already exist.  (For example, closing the `1.2.3`
+   branch will create `2.0.0`, `1.3.0` and `1.2.4`.)
+
+ * Adding a `BRANCH-CLOSED` file to the root of the repository.  This is
+   used as a visual cue and hint to the Git hooks described below that
+   commits should not be added to the current branch.
+
+### close-release
+- Loop on all repos/projects
+  - Clone repo
+  - Call `close-branch`
+
+### close-branch
+- Call `create-next-versions`
+- Add a BRANCH-CLOSED file to the repo (used by the git-hooks hereabove)
+- Do a git commit and a **push**
+
+#### Usage Examples
+
+```
+% cd ~/work/my-repository
+% git checkout 1.2.3
+% /path/to/tools/bin/close-branch
+```
+
+### create-next-versions
+To run from a release branch, i.e. X.Y.Z.
+
+- Loop on all next-versions numbers
+  - Create new branch
+  - Call `rpm_set_version`
+  - Call `deb_set_new_version`
+  - Do a git commit and a **push**
+
+#### Usage examples:
+
+To create branch 4.2.1 and 4.3.0:
+```
+(git:4.2.0)$ ../perfsonar-dev-tools/bin/create-next-versions
+```
+
+To create branch 4.2.3 from 4.2.1 (skipping 4.2.2):
+```
+(git:4.2.1)$ MYNEXTVERSIONS="4.2.3" ../perfsonar-dev-tools/bin/create-next-versions
+```
+
+## Merge a release into an already existing branch for future release
+
+### merge-forward
+- Loop on all repos/projects
+  - Clone repo
+  - Loop on all next-versions numbers
+    - Call `merge-repo-forward`
+    - Do a git **push** if succesful
+
+### merge-repo-forward
+To run from a higher release branch with a reference from an existing tag on the master branch.
+
+- Merge a patch release into a higher version branch
+- Take care of conflicts on RPM and debian files
+- Do a git commit
+
+#### Usage examples:
+
+To merge latest released branch 4.2.2 (with tag from master) into 4.3.0
+```
+(git:4.3.0)$ ../perfsonar-dev-tools/bin/merge-repo-forward 4.2.2
+```
 
