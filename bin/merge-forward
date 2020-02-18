@@ -58,7 +58,7 @@ do
         HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
         if [ -n "$HAS_BRANCH" ]; then
             git checkout $NEXT_VERSION
-            if ./merge-repo-forward $VERSION; then
+            if ${WHEREAMI}/merge-repo-forward $VERSION; then
                 narrate "Pushing changes"
                 git push
             else
