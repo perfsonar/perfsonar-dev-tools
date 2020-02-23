@@ -45,7 +45,7 @@ do
     narrate "Downloading $GIT_URL"
     git clone "$GIT_URL" "$PROJECT"
     
-    #get branch
+    # get branch
     cd "$PROJECT"
     git fetch
     narrate "Fetching branch ${VERSION}"
@@ -60,8 +60,8 @@ do
     
     # Process RPM and DEB files for release
     DEB_OPT=""
-    if [ -d debian ]; then
-        #only set a debian release if we actually have a debian directory
+    if [[ -d debian || -d pscheduler-server/pscheduler-server/debian ]]; then
+        # only set a debian release if we actually have a debian directory or we are in the pscheduler repo
         DEB_OPT="-d 1"
     fi
     ${WHEREAMI}/make-repo-release -r "$RELNUM" $DEB_OPT "$VERSION"

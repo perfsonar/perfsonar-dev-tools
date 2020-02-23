@@ -35,6 +35,13 @@ These are the scripts one should use to deal with making a release and preparing
 **NOTE: See the `make-release` script for doing this for all packages. Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
 
 ### make-release
+- Call `merge-forward` to merge all repos in future releases branches
+- Loop on all repos/projects
+  - Clone repo
+  - Call `make-repo-release`
+  - Do a git **push** with tags if succesful
+
+### make-repo-release
 The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
@@ -43,12 +50,6 @@ It has additional options which ore documented in the script `-h`.
 This program enforces the [version numbering as specified in our policy](https://github.com/perfsonar/project/wiki/Versioning
 "perfSONAR package numbering").
 
-- Loop on all repos/projects
-  - Clone repo
-  - Call `make-repo-release`
-  - Do a git **push** with tags if succesful
-
-### make-repo-release
 - Release final, RC, beta or alpha of packages existing in a single repository
 - Change RPM and debian files
 - Do a git commit and add tags
