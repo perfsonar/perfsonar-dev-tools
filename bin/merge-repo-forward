@@ -25,7 +25,7 @@ fi
 
 # Check if a tag from this branch already exists
 if git tag -l | grep -qE "^v${VERSION}$"; then
-    echo "A git tag already exists from this branch, I'll be merging the tag."
+    echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
     VERSION="v$VERSION"
 fi
 
@@ -42,6 +42,8 @@ if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
 else
     if git tag -l | grep -qE "^${VERSION}$"; then
         # We have a tag from this version, it means we need to make some special changes
+        echo
+        echo "Trying semi-automatic merge with heuristics from our own script."
         # Make sure we don't change anything in submodules
         git submodule deinit -f .
         # RPM relnum must be kept, and NEXT_VERSION must be used, not the one from the merged branch
@@ -83,6 +85,13 @@ AC_INIT\(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu\)
 AC_INIT\(owamp, ${VERSION#v}, owamp-bugs\@internet2.edu\)
 >>>>>>> ${VERSION}
 /AC_INIT(owamp, $NEXT_VERSION, owamp-bugs\@internet2.edu)
+/" $CONFFILES
+            perl -i -0pe "s/<<<<<<< HEAD
+AC_SUBST\(PATCH_LEVEL, 0.a1.0\)
+=======
+AC_SUBST\(PATCH_LEVEL, 1\)
+>>>>>>> ${VERSION}
+/AC_SUBST(PATCH_LEVEL, 0.a1.0)
 /" $CONFFILES
             if ! grep -sE "^<<<<<<< HEAD$" $CONFFILES; then
                 # All conflicts are solved

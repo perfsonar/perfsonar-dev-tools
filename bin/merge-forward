@@ -1,25 +1,28 @@
 #!/bin/sh -e
 #
-# Close version branches in all releasable perfSONAR repos
+# Merge forward a given version in all releasable perfSONAR repos
+#
+# Usage: 
+#       merge-forward VERSION
 # 
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"
 
-#Get version parameter
-VERSION=$1
+# Get version from parameter
+VERSION="$1"
 if [ -z "$VERSION" ]; then
-    die "Must specify VERSION as command-line option"
+    die "Must specify VERSION as first command-line option"
 fi
 
-#make temp dir
+# Make temp dir
 TEMPDIR=`mktemp -d`
 narrate "Creating workspace in $TEMPDIR"
 
-#Init failed merges
+# Init failed merges messages
 FAILED_MERGES=""
 
-#list project
+# Go through all projects
 for PROJECT in "${PROJECTS[@]}"
 do
     cd $TEMPDIR
@@ -35,11 +38,11 @@ do
     fi
     
     #get branch
-    cd $PROJECT
+    cd "$PROJECT"
     git fetch
     narrate "Fetching branch ${VERSION}"
     HAS_BRANCH=$(git branch --list -r origin/${VERSION})
-    if [ -z $HAS_BRANCH ]; then
+    if [ -z "$HAS_BRANCH" ]; then
         warn "$PROJECT does not contain branch $VERSION, skipping"
         continue
     fi
@@ -53,12 +56,12 @@ do
     for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${VERSION}")
     do
         # checkout branches since git sometimes needs this to merge
-        git checkout $VERSION
-        NEXT_VERSION="$(echo -e "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
+        git checkout "$VERSION"
+        NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
         HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
         if [ -n "$HAS_BRANCH" ]; then
-            git checkout $NEXT_VERSION
-            if ${WHEREAMI}/merge-repo-forward $VERSION; then
+            git checkout "$NEXT_VERSION"
+            if ${WHEREAMI}/merge-repo-forward "$VERSION"; then
                 narrate "Pushing changes"
                 git push
             else
@@ -68,11 +71,11 @@ do
     done
 done
 
-#Clean-up TEMPDIR
+# Clean-up TEMPDIR
 echo ""
 rm -rf $TEMPDIR
 
-#report result
+# report result
 if [ -n "$FAILED_MERGES" ]; then
     echo "The following projects failed to merge:"
     echo "  $FAILED_MERGES"

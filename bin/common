@@ -183,7 +183,7 @@ deb_correct_changelog()
         # Save debian/changelog changes local to this branch
         git checkout "$NEXT_VERSION" "$MYDIR/debian/changelog"
         DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
-        perl -ne "print unless /$DEB_PKG \($MINOR/ .. eof" "$MYDIR/debian/changelog" > "$TMP_FILE"
+        perl -ne "print unless /$DEB_PKG \(${VERSION#v}/ .. eof" "$MYDIR/debian/changelog" > "$TMP_FILE"
         # Keep the gbp settings from the current branch
         git checkout "$NEXT_VERSION" "$MYDIR/debian/gbp.conf"
         # debian/changelog must always be ordered by version number (not by date)

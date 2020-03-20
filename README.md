@@ -32,16 +32,26 @@ Currently, these hooks do the following:
 These are the scripts one should use to deal with making a release and preparing repositories for the subsequent release.
 
 ## To make a release
-**NOTE: See the `make-release` script for doing this for all packages. Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
+**NOTE: Full details on the release proccess are [here](https://github.com/perfsonar/project/wiki/Release-Process)**
 
-### make-release
-- Call `merge-forward` to merge all repos in future releases branches
+Usually it is used in the following way (for release `4.2.3` as example):
+- Call to `make-release 4.2.3 -r 1`
+  - Will create the release files and the release tags
+  - Will merge this release changes in the next release branches if they are existing  (i.e. 4.3.x)
+- Call to `close-release 4.2.3`
+  - Will close the 4.2.3 branch
+  - Will create the next version branches if they are not existing (i.e. 4.3.x and 4.2.4).
+
+### All repos: make-release
+- If it's a final release (with `-r 1`)
+  - call `merge-forward` to merge all repos in future releases branches
+- Work in a temporary directory
 - Loop on all repos/projects
   - Clone repo
   - Call `make-repo-release`
-  - Do a git **push** with tags if succesful
+  - Do a git **push with tags** if succesful
 
-### make-repo-release
+### One repo: make-repo-release
 The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
@@ -80,6 +90,25 @@ Making a Debian only release:
 % /path/to/tools/bin/make-repo-release -r 1 -d 2 -g 4.2.0
 ```
 
+## To merge changes in forward branches
+### All repos: merge-forward
+- Takes a VERSION as parameter
+- Work in a temporary directory
+- Loop on all repos/projects
+  - Clone repo
+  - Call `next-versions` to make sure forward branches exist
+  - Call `merge-repo-forward`
+  - Do a git **push** if succesful
+
+### One repo: merge-repo-forward
+The `merge-repo-forward` program try to merge changes from a lower release branch to the current branch. It works on a single repository. It always takes an argument: the VERSION to be merged, which needs to be lower than the current branch version. If a tag for the lower VERSION exists the tag will be merged, otherwise it is the tip of the lower VERSION branch that is merged in the current (higher version) branch.
+
+It first tries to do a straight `git merge` (which also do a commit) and exit if all is fine.
+
+If the straight merge doesn't work and a tag is being merged (i.e.: it is a released version that is to be merged forward), then this script tries to take care of all known differences that can happen between the branches. It currently catters for changes in RPM `*.spec` files, `Makefile` files, `configure.ac` files and `debian/changelog` files.  For the `pscheduler` repositories, it does that for all sub-directories. All the changes are then added in a single commit to the repository.
+
+If the straight merge doesn't work and it's not a tag that is being merged, then the script exits and ask for a manual merge.
+
 ## To close a release branch
 The `close-branch` program is used on release to prepare for
 development of the next release by doing the following:
@@ -93,13 +122,18 @@ development of the next release by doing the following:
    commits should not be added to the current branch.
 
 ### close-release
+- Takes a VERSION as parameter
+- Work in a temporary directory
 - Loop on all repos/projects
   - Clone repo
   - Call `close-branch`
 
 ### close-branch
-- Call `create-next-versions`
-- Add a BRANCH-CLOSED file to the repo (used by the git-hooks hereabove)
+- Call `create-next-versions` to make sure the next version branch is existing
+- Loop on all `next-versions`
+  - Call `merge-repo-forward` to merge the closing branch to the `next-versions`
+  - Git **push** the merged forward `next-versions` branch if successful
+- Add a `BRANCH-CLOSED` file to the repo (used by the git-hooks hereabove)
 - Do a git commit and a **push**
 
 #### Usage Examples

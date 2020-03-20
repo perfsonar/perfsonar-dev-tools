@@ -14,6 +14,7 @@ if [ -z "$VERSION" ]; then
     die "Must specify VERSION as first command-line option"
 fi
 
+# Make temp dir
 TEMPDIR=`mktemp -d`
 narrate "Creating workspace in $TEMPDIR"
 
@@ -41,8 +42,8 @@ do
     # checkout branch
     git checkout "$VERSION"
     
+    # and close
     ${WHEREAMI}/close-branch
-
 done
 
 # Clean-up TEMPDIR

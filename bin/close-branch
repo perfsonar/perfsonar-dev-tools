@@ -13,6 +13,7 @@ cd "${REPO_TOP}"
 
 CLOSE_FILE="BRANCH-CLOSED"
 CLOSED=$(git branch | grep \* | cut -d ' ' -f2)
+git pull
 
 if [ -e "${CLOSE_FILE}" ]
 then
@@ -20,9 +21,27 @@ then
     exit 0
 fi
 
-
+# Create the next versions branches
 ${WHEREAMI}/create-next-versions "${REPO_TOP}"
 
+# Merge all pending changes in forward branches
+for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${CLOSED}")
+do
+    NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
+    HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
+    if [ -n "$HAS_BRANCH" ]; then
+        git checkout "$NEXT_VERSION"
+        git pull
+        if ${WHEREAMI}/merge-repo-forward $CLOSED; then
+            narrate "Pushing changes"
+            git push
+        else
+            narrate "Nothing to be merged"
+        fi
+    fi
+done
+
+# Closing the branch
 git checkout "${CLOSED}"
 touch "${CLOSE_FILE}"
 git add "${CLOSE_FILE}"
@@ -30,3 +49,4 @@ git commit -m "Closing branch" "${CLOSE_FILE}"
 git push
 
 narrate "Branch ${CLOSED} closed."
+

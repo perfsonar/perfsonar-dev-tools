@@ -18,7 +18,7 @@ export GIT_DIR
 THIS_BRANCH=$(git branch -l | awk '$1 == "*" { print $2 }')
 
 # Create new branches from this one if they don't already exist
-RELNUM="0.a0.0"
+RELNUM="0.a1.0"
 
 # If MYNEXTVERSIONS exists, we use it instead of the next-versions script
 [ "$MYNEXTVERSIONS" ] && VERSIONS="$MYNEXTVERSIONS" || VERSIONS=$("${WHEREAMI}/next-versions" "${THIS_BRANCH}")
@@ -28,9 +28,12 @@ do
     HAS_BRANCH=$(git branch --list -r "origin/${VERSION}")
     if [ -n "$HAS_BRANCH" ]; then
         narrate "Repo already has a branch ${VERSION}"
+        # TODO: Should add a '-f' flag to force updating the versions in RPM and DEB (i.e. bypassing the continue)
+        # Or says that when MYNEXTVERSIONS is set we force update?
         continue
+    else
+        git checkout -b "${VERSION}"
     fi
-    git checkout -b "${VERSION}"
     # Make sure we don't change anything in submodules
     git submodule deinit -f .
     rpm_set_version "$VERSION" "$RELNUM" || :
