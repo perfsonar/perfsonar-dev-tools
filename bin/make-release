@@ -23,9 +23,6 @@ if [ "${RELNUM:0:1}" == "0" ]; then
     narrate "We have an alpha, beta or release candidate."
 elif [ "${RELNUM}" == "1" ]; then
     narrate "We have a final release, celebrate!"
-    # Merge all changes into existing branches for next versions
-    narrate "[MERGE FORWARD]"
-    "${WHEREAMI}/merge-forward" "$VERSION"
 else
     error "We have an RPM repackaging release (RELNUM > 1), are you sure it is for all the projects?"
 fi
@@ -69,10 +66,41 @@ do
         # Push changes away
         git push
         git push --tags
+        
+        # Merge all changes into existing branches for next versions
+        narrate "[MERGE FORWARD]"
+        #make sure we can find next-versions
+        if [ ! -e "${WHEREAMI}/next-versions" ]; then
+            die "Unable to call ${WHEREAMI}/next-versions. Make sure you are executing this script with full path"
+        fi
+        
+        #TODO: MERGE FORWARD INTO NEXT MAJOR release if exists
+        for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${VERSION}")
+        do
+            # checkout branches since git sometimes needs this to merge
+            git checkout "$VERSION"
+            NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
+            HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
+            if [ -n "$HAS_BRANCH" ]; then
+                git checkout "$NEXT_VERSION"
+                if ${WHEREAMI}/merge-repo-forward "$VERSION"; then
+                    narrate "Pushing changes"
+                    git push
+                else
+                    FAILED_MERGES="${FAILED_MERGES} ${PROJECT}"
+                fi
+            fi
+        done
     fi
 done
 
 # Clean-up TEMPDIR
 echo ""
-rm -rf "$TEMPDIR"
-echo "[SUCCESS]"
+if [ -n "$FAILED_MERGES" ]; then
+    echo "[FAILED MERGES]"
+    echo $FAILED_MERGES
+    echo "Repos can be found in directory $TEMPDIR"
+else
+    rm -rf "$TEMPDIR"
+    echo "[SUCCESS]"
+fi
