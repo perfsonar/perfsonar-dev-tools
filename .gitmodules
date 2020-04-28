@@ -1,0 +1,3 @@
+[submodule "debian/testbed/ansible-playbook-perfsonar"]
+	path = debian/testbed/ansible-playbook-perfsonar
+	url = https://github.com/perfsonar/ansible-playbook-perfsonar

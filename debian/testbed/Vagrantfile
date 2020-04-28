@@ -1,0 +1,84 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby shiftwidth=4 :
+
+ansible_hosts=[
+    {
+        :hostname => "d9-toolkit",
+        :ip => "192.168.33.11",
+        :box => "debian/contrib-stretch64"
+    },
+    {
+        :hostname => "u16-toolkit",
+        :ip => "192.168.33.12",
+        :box => "ubuntu/xenial64",
+    },
+    {
+        :hostname => "u18-toolkit",
+        :ip => "192.168.33.13",
+        :box => "ubuntu/bionic64"
+    }
+]
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+# More info at https://docs.vagrantup.com.
+Vagrant.configure("2") do |config|
+    # Increase RAM for better performances
+    config.vm.provider "virtualbox" do |vb|
+        vb.memory = 4096
+    end
+
+    # Skip VB Gest Additions update
+    if Vagrant.has_plugin?("vagrant-vbguest")
+        config.vbguest.auto_update = false
+    end
+
+    # Configure each ansible_hosts define above
+    ansible_hosts.each do |machine|
+        config.vm.define machine[:hostname] do |node|
+            node.vm.box = machine[:box]
+            if machine[:box_version]
+                node.vm.box_version = machine[:box_version]
+            end
+            node.vm.hostname = machine[:hostname]
+            #node.vm.network "private_network", ip: machine[:ip]
+            node.vm.network "public_network", ip: machine[:ip], bridge: "em0"
+            # This could be changed to "public_network" to test perfSONAR functionalites if needed
+            #node.vm.network "public_network", ip: machine[:ip], bridge: "em0"
+            # See https://www.vagrantup.com/docs/networking/public_network.html
+
+            # Provision with Ansible at the end
+            # TODO: change this condition to match the number of items in the ansible_hosts array
+            if machine[:hostname] == "u18-toolkit"
+                node.vm.provision :ansible do |ansible|
+                    # Disable default limit to connect to all the machines
+                    ansible.limit = "all"
+                    ansible.config_file = "ansible-playbook-perfsonar/ansible.cfg"
+                    ansible.galaxy_role_file = "ansible-playbook-perfsonar/requirements.yml"
+                    ansible.playbook = "ansible-playbook-perfsonar/perfsonar.yml"
+                    ansible.become = true
+                    ansible.groups = {
+                        "ps-toolkits" => [ "d9-toolkit", "u16-toolkit", "u18-toolkit" ]
+                    }
+                    ansible.extra_vars = {
+                        "perfsonar_release" => "4.3-snapshot"
+                    }
+                end
+            end
+        end
+    end
+
+    # Create a forwarded port mapping which allows access to a specific port
+    # within the machine from a port on the host machine. In the example below,
+    # accessing "localhost:8080" will access port 80 on the guest machine.
+    # NOTE: This will enable public access to the opened port
+    # config.vm.network "forwarded_port", guest: 80, host: 8080
+
+    # Create a forwarded port mapping which allows access to a specific port
+    # within the machine from a port on the host machine and only allow access
+    # via 127.0.0.1 to disable public access
+    # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
+end
