@@ -90,6 +90,7 @@ fi
 PKG="${PWD##*\/}"
 RPM_VERSION="$VERSION-$relnum"
 DEB_VERSION="$VERSION"
+merge_to_master=false
 if [ "${relnum:0:1}" == "0" ]; then
     # That's a alpha/beta/RC
     GIT_TAG="v$VERSION-${relnum#*\.}"
@@ -98,10 +99,12 @@ if [ "${relnum:0:1}" == "0" ]; then
 elif [ "${relnum:0:1}" == "1" ]; then
     # That's a final
     GIT_TAG="v$VERSION"
+    merge_to_master=true
     verbose "Let's celebrate, we have a final release!"
 else
-    # That's a RPM only release
+    # That's an RPM only final release
     GIT_TAG="v$VERSION-rpm${relnum}"
+    merge_to_master=true
     verbose "We have an RPM repackaging release."
     if [ -n "$debrel" ]; then
         error "You asked for both an RPM repackaging release and a Debian repackaging release, that's not compatible.\nThat should actually be a fully new release (or a new alpha/beta/RC)."
@@ -173,8 +176,13 @@ if [ -n "$debrel" ]; then
     fi
     if grep -qs '(native)' debian/source/format ; then
         # No need to check native pscheduler packages, there aren't any
-        verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
-        # Still, -d need to be used to build the Debian package…
+        if [ -n "$RPM_VERSION" ]; then
+            verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
+            # Still, -d need to be used to build the Debian package…
+        else
+            DEB_VERSION="${DEB_VERSION}.${debrel}"
+            verbose "That's a Debian native package and Debian only subrelease (.$debrel)"
+        fi
     else
         DEB_VERSION="$DEB_VERSION-$debrel"
     fi
@@ -301,14 +309,16 @@ else
     fi
     git commit -m "$GITMSG"
     
-    #switch to master and merge
-    git checkout master
-    if ! git merge --no-ff --no-commit $VERSION; then
-        error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
+    if $merge_to_master; then
+        # Switch to master and merge, only for final releases
+        git checkout master
+        if ! git merge --no-ff --no-commit $VERSION; then
+            error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
+        fi
+        # We must keep debian/gbp.conf from master
+        git checkout master -- debian/gbp.conf
+        git commit -m "Merge branch $VERSION"
     fi
-    # We must keep debian/gbp.conf from master
-    git checkout master -- debian/gbp.conf
-    git commit -m "Merge branch $VERSION"
     
     # Adding tags
     if [ -n "$RPM_VERSION" ]; then
