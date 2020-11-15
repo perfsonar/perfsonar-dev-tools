@@ -160,7 +160,7 @@ deb_change_files()
 {
     if [ -f "$MYDIR/debian/changelog" ]; then
         DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
-        echo "$DEB_PKG ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n" > "$TMP_FILE"
+        printf "$DEB_PKG ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n\n" > "$TMP_FILE"
         cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
         /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
         git add "$MYDIR/debian/changelog"

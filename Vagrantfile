@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
         #Install all requirements and perform initial setup
         psdevtools.vm.provision "shell", inline: <<-SHELL
             yum install -y epel-release
-            yum install -y  http://software.internet2.edu/rpms/el7/x86_64/RPMS.main/perfSONAR-repo-0.8-1.noarch.rpm
+            yum install -y  http://software.internet2.edu/rpms/el7/x86_64/RPMS.main/perfSONAR-repo-0.10-1.noarch.rpm
             yum clean all
             yum install -y gcc\
                 kernel-devel\
