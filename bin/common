@@ -135,6 +135,10 @@ deb_set_new_version()
         DEBFULLNAME="perfSONAR developers"
     fi
 
+    # Change gbp.conf to build from new branch
+    find . -type f -name gbp.conf -exec sh -c 'for f do sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$f" > "$TMP_FILE"; sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$f"; git add "$f"; done' find-sh {} \;
+
+    # Add a new changelog entry
     if [[ "${PWD##*\/}" == "pscheduler" ]]; then
         MYCWD=`pwd`
         # If we're in the pscheduler repo, we must loop on all packages
@@ -146,17 +150,18 @@ deb_set_new_version()
             else
                 MYDIR="$dir"
             fi
-            deb_change_files
+            deb_change_changelog
             cd "$MYCWD"
         done
     else
         MYDIR="."
-        deb_change_files
+        deb_change_changelog
     fi
+
 }
 
 # Set debian/ dir specific files
-deb_change_files()
+deb_change_changelog()
 {
     if [ -f "$MYDIR/debian/changelog" ]; then
         DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
@@ -164,14 +169,6 @@ deb_change_files()
         cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
         /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
         git add "$MYDIR/debian/changelog"
-    fi
-
-    # Update gbp.conf to new branch
-    if [ -f "$MYDIR/debian/gbp.conf" ]; then
-        sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$MYDIR/debian/gbp.conf" > "$TMP_FILE"
-        sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$MYDIR/debian/gbp.conf"
-        /bin/rm "$TMP_FILE"
-        git add "$MYDIR/debian/gbp.conf"
     fi
 }
 
