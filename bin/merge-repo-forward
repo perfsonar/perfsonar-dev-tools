@@ -6,6 +6,10 @@
 # Usage (if b>d):
 #   git checkout a.b.c
 #   ../perfsonar-dev-tools/bin/merge-repo-forward a.d.e
+# 
+# If you don't want to merge an existing tag but only the branch,
+# set the MERGETAG environment variable to false:
+#   MERGETAG=false ../perfsonar-dev-tools/bin/merge-repo-forward a.d.e
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"
@@ -24,7 +28,7 @@ if [[ $VERSION > $NEXT_VERSION ]]; then
 fi
 
 # Check if a tag from this branch already exists
-if git tag -l | grep -qE "^v${VERSION}$"; then
+if $MERGETAG && git tag -l | grep -qE "^v${VERSION}$"; then
     echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
     VERSION="v$VERSION"
 fi

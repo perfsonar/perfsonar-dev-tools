@@ -90,27 +90,8 @@ Making a Debian only release:
 % /path/to/tools/bin/make-repo-release -r 1 -d 2 -g 4.2.0
 ```
 
-## To merge changes in forward branches
-### All repos: merge-forward
-- Takes a VERSION as parameter
-- Work in a temporary directory
-- Loop on all repos/projects
-  - Clone repo
-  - Call `next-versions` to make sure forward branches exist
-  - Call `merge-repo-forward`
-  - Do a git **push** if succesful
-
-### One repo: merge-repo-forward
-The `merge-repo-forward` program try to merge changes from a lower release branch to the current branch. It works on a single repository. It always takes an argument: the VERSION to be merged, which needs to be lower than the current branch version. If a tag for the lower VERSION exists the tag will be merged, otherwise it is the tip of the lower VERSION branch that is merged in the current (higher version) branch.
-
-It first tries to do a straight `git merge` (which also do a commit) and exit if all is fine.
-
-If the straight merge doesn't work and a tag is being merged (i.e.: it is a released version that is to be merged forward), then this script tries to take care of all known differences that can happen between the branches. It currently catters for changes in RPM `*.spec` files, `Makefile` files, `configure.ac` files and `debian/changelog` files.  For the `pscheduler` repositories, it does that for all sub-directories. All the changes are then added in a single commit to the repository.
-
-If the straight merge doesn't work and it's not a tag that is being merged, then the script exits and ask for a manual merge.
-
 ## To close a release branch
-The `close-branch` program is used on release to prepare for
+The `close-branch` program is used **after release** to prepare for
 development of the next release by doing the following:
 
  * Creating branches for the next major, minor and bugfix releases if
@@ -143,6 +124,18 @@ development of the next release by doing the following:
 % git checkout 1.2.3
 % /path/to/tools/bin/close-branch
 ```
+
+## Internals
+The following scripts are used internally by the above described scripts, but shouldn't normally be called by themselves.
+
+### One repo: merge-repo-forward
+The `merge-repo-forward` program try to merge changes from a lower release branch to the current branch. It works on a single repository. It always takes an argument: the VERSION to be merged, which needs to be lower than the current branch version. If a tag for the lower VERSION exists the tag will be merged, otherwise it is the tip of the lower VERSION branch that is merged in the current (higher version) branch.
+
+It first tries to do a straight `git merge` (which also do a commit) and exit if all is fine.
+
+If the straight merge doesn't work and a tag is being merged (i.e.: it is a released version that is to be merged forward), then this script tries to take care of all known differences that can happen between the branches. It currently catters for changes in RPM `*.spec` files, `Makefile` files, `configure.ac` files and `debian/changelog` files.  For the `pscheduler` repositories, it does that for all sub-directories. All the changes are then added in a single commit to the repository.
+
+If the straight merge doesn't work and it's not a tag that is being merged, then the script exits and ask for a manual merge.
 
 ### create-next-versions
 To run from a release branch, i.e. X.Y.Z.

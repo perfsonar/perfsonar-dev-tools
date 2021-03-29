@@ -29,7 +29,7 @@ do
     narrate "Downloading $GIT_URL"
     git clone "$GIT_URL" "$PROJECT"
     
-    #get branch
+    # get branch
     cd "$PROJECT"
     git fetch
     narrate "Fetching branch ${VERSION}"
