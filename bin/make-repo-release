@@ -263,6 +263,7 @@ if [ -n "$debrel" ]; then
             verbose "Trying to refresh quilt patches to latest merge."
             export QUILT_PATCHES="debian/patches"
             export QUILT_REFRESH_ARGS="-p ab --no-index"
+            [ -f .pc/applied-patches ] && error "Quilt state is not clean, check your .pc directory. Cannot continue"
             quilt --quiltrc - push -aq --refresh > /dev/null
             [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
             quilt pop -aq > /dev/null
