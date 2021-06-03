@@ -55,7 +55,8 @@ Usually it is used in the following way (for release `4.2.3` as example):
 The `make-repo-release` program try to release new packages from a 
 perfSONAR repository.  It always  takes  an  argument: the VERSION to be
 released. There is another mandatory option, `-r` which states the RELNUM.
-It has additional options which ore documented in the script `-h`.
+If doing both an RPM and DEB release, both `-r` and `-d` must be given.
+This script has additional options which ore documented in the script `-h`.
 
 This program enforces the [version numbering as specified in our policy](https://github.com/perfsonar/project/wiki/Versioning
 "perfSONAR package numbering").

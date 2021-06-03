@@ -14,6 +14,10 @@ show_help() {
     then it will also be a Debian release (unless the corresponding  Debian  tag
     is already existing).
 
+    When doing an alpha, beta or release candidate, the relnum must  start  with
+    '0.' as described in https://github.com/perfsonar/project/wiki/Versioning
+    If doing both an RPM and DEB, both relnum and debrel must be given.
+
     The given VERSION number is checked against the previous one  to  make  sure
     the sequence is increasing or stays the same  (but  then  relnum  or  debrel
     needs to increase).
