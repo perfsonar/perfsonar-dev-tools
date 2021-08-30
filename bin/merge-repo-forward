@@ -27,10 +27,25 @@ if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
 fi
 
-# Check if a tag from this branch already exists
-if $MERGETAG && git tag -l | grep -qE "^v${VERSION}$"; then
-    echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
-    VERSION="v$VERSION"
+# Check if the released patch release is already merged into the NEXT_VERSION
+CHANGELOG=`find . -type f -name changelog` 
+if [ -n "$CHANGELOG" ]; then
+    # We have a Debian package, so the content of debian/changelog should tell us if the final release needs to be merged
+    if grep -qs "($VERSION~" $CHANGELOG && git tag -l | grep -qE "^v${VERSION}$"; then
+        # Only an alpha or beta release was merged into the NEXT_VERSION branch, we need to merge the final release (i.e. the tag)
+        echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
+        VERSION="v$VERSION"
+    else
+        echo "Only an alpha or beta release was merged into $NEXT_VERSION, I'll do a direct merge from $VERSION."
+    fi
+else
+    # We're on a RPM only repository
+    if git tag -l | grep -qE "^v${VERSION}$"; then
+        echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
+        VERSION="v$VERSION"
+    else
+        echo "No tag found, I'll do a direct merge from $VERSION."
+    fi
 fi
 
 # RPM files
@@ -50,6 +65,8 @@ else
         echo "Trying semi-automatic merge with heuristics from our own script."
         # Make sure we don't change anything in submodules
         git submodule deinit -f .
+
+        ### Firstly we take care of RPM related files
         # RPM relnum must be kept, and NEXT_VERSION must be used, not the one from the merged branch
         # In specfiles
         perl -i -0pe "s/<<<<<<< HEAD
@@ -103,6 +120,10 @@ AC_SUBST\(PATCH_LEVEL, 1\)
             fi
         fi
 
+        ### Secondly, Debian packaging related files
+        # Keep the gbp settings from the current branch (using find so we care for the pScheduler repo)
+        find . -type f -name gbp.conf -exec git checkout "$NEXT_VERSION" {} \;
+        # And correct the debian/changelog with the extraneous merged entries
         if [[ "${PWD##*\/}" == "pscheduler" ]]; then
             MYCWD=`pwd`
             # If we're in the pscheduler repo, we must loop on all packages

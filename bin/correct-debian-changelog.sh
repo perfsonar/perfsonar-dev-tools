@@ -9,12 +9,13 @@ WHEREAMI=$(dirname $0)
 # Version to reverse to (TAG)
 #VERSION="stretch/4.4.0"
 
-# We work on branch 4.3.5
-#git pull; git checkout 4.3.5
-git pull; git checkout 4.4.0
+# We work on branch 4.4.0
+git checkout 4.3.5; git pull
+git checkout 4.4.0; git pull
 
 # Get current branch
 BRANCH=`git branch --list | awk '/^\* .*$/ {print $2}'`
+MYDIR="."
 
 # Remove bad first line
 #perl -ni -e 'print unless $. ==  1' debian/changelog

@@ -26,15 +26,16 @@ ${WHEREAMI}/create-next-versions "${REPO_TOP}"
 
 # Merge all pending changes in forward branches
 # This should only be needed if there were new changes after running the 'make-release' script
-for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${CLOSED}")
+# TODO: We'll need the --major flag while we have 5.0.0 open for development
+for NEXT_VERSION in $("${WHEREAMI}/next-versions" "--major" "${CLOSED}")
 do
     NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
     HAS_BRANCH=$(git branch --list -r origin/${NEXT_VERSION})
     if [ -n "$HAS_BRANCH" ]; then
         git checkout "$NEXT_VERSION"
         git pull
-        # We merge the branch forward, but not the tag as it should already be merged from a previous 'make-release' call
-        if MERGETAG=false ${WHEREAMI}/merge-repo-forward "$CLOSED"; then
+        # We merge the branch forward
+        if ${WHEREAMI}/merge-repo-forward "$CLOSED"; then
             narrate "Pushing changes"
             git push
         else

@@ -318,11 +318,22 @@ else
         # Switch to master and merge, only for final releases
         git checkout master
         if ! git merge --no-ff --no-commit $VERSION; then
-            error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
+            # Force gbp.conf on master
+            echo "We'll force debian/gbp.conf to be from master, hope this will solve the conflicting merge..."
+            git checkout master -- debian/gbp.conf
+            sed -i '' "s/-branch = .*/-branch = master/" debian/gbp.conf
+            git add debian/gbp.conf
+            if ! git commit -m "Merge branch $VERSION into master"; then
+                error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
+            fi
+        else
+            # We must keep debian/gbp.conf from master and force to build from master
+            # Doing it with find, so it works with pScheduler repo too
+            find . -type f -name gbp.conf -exec git checkout master -- {} \;
+            find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
+            find . -type f -name gbp.conf -exec git add {} \;
+            git commit -m "Merge branch $VERSION into master"
         fi
-        # We must keep debian/gbp.conf from master
-        git checkout master -- debian/gbp.conf
-        git commit -m "Merge branch $VERSION"
     fi
     
     # Adding tags
