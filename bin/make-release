@@ -64,7 +64,8 @@ do
     ${WHEREAMI}/make-repo-release -r "$RELNUM" $DEB_OPT "$VERSION"
     if [ $? -eq 0 ]; then
         # Push changes away
-        git push
+        git push origin $VERSION
+        git push origin master
         git push --tags
         
         # Merge all changes into existing branches for next versions

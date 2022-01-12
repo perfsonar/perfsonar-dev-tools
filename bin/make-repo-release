@@ -320,9 +320,9 @@ else
         if ! git merge --no-ff --no-commit $VERSION; then
             # Force gbp.conf on master
             echo "We'll force debian/gbp.conf to be from master, hope this will solve the conflicting merge..."
-            git checkout master -- debian/gbp.conf
-            sed -i '' "s/-branch = .*/-branch = master/" debian/gbp.conf
-            git add debian/gbp.conf
+            find . -type f -name gbp.conf -exec git checkout master -- {} \;
+            find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
+            find . -type f -name gbp.conf -exec git add {} \;
             if ! git commit -m "Merge branch $VERSION into master"; then
                 error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
             fi
