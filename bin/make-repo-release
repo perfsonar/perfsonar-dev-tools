@@ -317,6 +317,7 @@ else
     if $merge_to_master; then
         # Switch to master and merge, only for final releases
         git checkout master
+        git pull
         if ! git merge --no-ff --no-commit $VERSION; then
             # Force gbp.conf on master
             echo "We'll force debian/gbp.conf to be from master, hope this will solve the conflicting merge..."
