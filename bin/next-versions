@@ -65,7 +65,7 @@ version = remaining_args[0]
 
 max_parts = options.max_parts
 if max_parts < 1:
-    print "Max parts must be positive"
+    print("Max parts must be positive")
     exit(1)
 
 semantic = options.semantic
@@ -90,7 +90,7 @@ while parts:
     if semantic:
         out_array = out_array + [0] * (max_parts - len(parts))
 
-    print ".".join([str(part) for part in out_array])
+    print(".".join([str(part) for part in out_array]))
 
     parts = parts[:-1]
     #skip major version number unless otherwise specified

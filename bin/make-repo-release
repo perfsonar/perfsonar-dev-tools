@@ -22,7 +22,7 @@ show_help() {
     the sequence is increasing or stays the same  (but  then  relnum  or  debrel
     needs to increase).
 
-    The RPM .spec and the debian/changelog files are automatically  modified  by
+    The RPM .spec and the deb/changelog files are automatically  modified  by
     this script. The script will create a new git commit with all changed  files
     and will add the corresponding tag. Debian quilt patches are  refreshed  and
     added to the commit as well.
@@ -93,12 +93,12 @@ fi
 # The versions and tags need to conform to our policy detailed at https://github.com/perfsonar/project/wiki/Versioning
 PKG="${PWD##*\/}"
 RPM_VERSION="$VERSION-$relnum"
-DEB_VERSION="$VERSION"
+DEB_VERSION_DEFAULT="$VERSION"
 merge_to_master=false
 if [ "${relnum:0:1}" == "0" ]; then
     # That's a alpha/beta/RC
     GIT_TAG="v$VERSION-${relnum#*\.}"
-    DEB_VERSION="$DEB_VERSION~${relnum#*\.}"
+    DEB_VERSION_DEFAULT="$DEB_VERSION_DEFAULT~${relnum#*\.}"
     verbose "We have an alpha, beta or candidate release."
 elif [ "${relnum:0:1}" == "1" ]; then
     # That's a final
@@ -138,158 +138,144 @@ git pull
 git submodule deinit -f .
 # TODO: how can we re-init submodules that were present at first?
 BRANCH=`git branch | grep \* | cut -d ' ' -f2`
+DEBIAN_TAG='' #last pkg will set this
+
+#HACK: Skip minor packages until we can autodetect whether this script should update version
+if [[ "$PKG" == "minor-packages" ]]; then
+    echo "No changes to debian for minor packages"
+    debrel=""
+fi
 
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then
+    #HACK: Ignore external pscheduler packages with versions we want to leave alone
+    directories=( $(find . -type d -path \*unibuild-packaging/deb) )
     if [[ "$PKG" == "pscheduler" ]]; then
-        echo -n "Checking pScheduler internal dependencies"
-        ./scripts/debian/check-rpm-deb-deps
-        # TODO: we should also check the pscheduler-bundles contain the same set of packages
-        # Loop on all pscheduler packages to be released for Debian
-        directories=`ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`
-        GBP_CONF=pscheduler-server/pscheduler-server/debian/gbp.conf
-        # This will need to be replaced when actually making the changelog entry at the end
-        DEB_PKG=`awk 'NR==1 {print $1}' pscheduler-server/pscheduler-server/debian/changelog`
-    else
-        directories="."
-        GBP_CONF=debian/gbp.conf
-        DEB_PKG=`awk 'NR==1 {print $1}' debian/changelog`
+        directories=( $(find . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb) \
+            $(find . -type d -path \*python-pscheduler/\*unibuild-packaging/deb) )
     fi
-    for dir in $directories; do
-        if [ -d $dir/$dir ]; then
-            # In case we're in the pscheduler repo and checking for packages which have a second level of directories
-            cd $dir
-        fi
-        if [ -d $dir/pscheduler ]; then
-            # Special directory naming for python-pscheduler
-            cd $dir
-            dir=pscheduler
-        fi
-        if [[ -f $dir/debian/changelog && -f $dir/debian/gbp.conf ]]; then
-            verbose "$dir/debian/changelog and $dir/debian/gbp.conf are present, that's a good start."
-        else
-            error "$dir doesn't look like a Debian packaging tree, I cannot find debian/changelog or debian/gbp.conf."
-        fi
+    for dir in ${directories[@]}; do
+        echo ""
+        echo "Processing $dir"
+        DEB_VERSION="$DEB_VERSION_DEFAULT-$debrel"
         cd "$MYCWD"
-    done
-    DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' $GBP_CONF`
-    if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
-        verbose "Current git branch ($BRANCH) matches the gbp configured branch ($DEBIAN_BRANCH)."
-    else
-        error "Your current git branch ($BRANCH) is not the same as the branch configured for gbp ($DEBIAN_BRANCH)."
-    fi
-    if grep -qs '(native)' debian/source/format ; then
-        # No need to check native pscheduler packages, there aren't any
-        if [ -n "$RPM_VERSION" ]; then
-            verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
-            # Still, -d need to be used to build the Debian package…
+        cd $dir/..
+        echo "$PWD"
+        GBP_CONF="deb/gbp.conf"
+        DEB_PKG=`awk 'NR==1 {print $1}' deb/changelog`
+        if [[ -f deb/changelog && -f deb/gbp.conf ]]; then
+            verbose "$dir/deb/changelog and $dir/deb/gbp.conf are present, that's a good start."
         else
-            DEB_VERSION="${DEB_VERSION}.${debrel}"
-            verbose "That's a Debian native package and Debian only subrelease (.$debrel)"
+            error "$dir doesn't look like a Debian packaging tree, I cannot find deb/changelog or deb/gbp.conf."
         fi
-    else
-        DEB_VERSION="$DEB_VERSION-$debrel"
-    fi
-    # Preparing debian git tag (~ are not allowed)
-    DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' $GBP_CONF`
-    DEBIAN_TAG="debian/$DEB_DISTRO/${DEB_VERSION/\~bpo/_bpo}"
-    DEBIAN_TAG="${DEBIAN_TAG/\~/-}"
-    # Check there is not an already existing Debian tag
-    if git tag -l | grep -q "^${DEBIAN_TAG}$" ; then
-        error "$DEBIAN_TAG is already existing in this repository."
-    fi
-
-    # Preparing debian/changelog
-    DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-${VERSION%.*}; urgency=low"
-    # If it's a DEB only release
-    if [ -z "$RPM_VERSION" ]; then
-        # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
-        if git diff --name-only $GIT_TAG -- | grep -Ev "(^debian/|/debian/)"; then
-            error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
+        DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' $GBP_CONF`
+        if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
+            verbose "Current git branch ($BRANCH) matches the gbp configured branch ($DEBIAN_BRANCH)."
+        else
+            error "Your current git branch ($BRANCH) is not the same as the branch configured for gbp ($DEBIAN_BRANCH)."
         fi
-    fi
-
-    # Replace debian/changelog signature line with commiter or DEBEMAIL info
-    # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
-    if [ -z "$DEBEMAIL" ]; then
-        DEBEMAIL="debian@perfsonar.net"
-    fi
-    if [ -z "$DEBFULLNAME" ]; then
-        DEBFULLNAME="perfSONAR developers"
-    fi
-    # We use a date format that is working on both Linux and BSD
-    DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
-    FINISH_LINE=" -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DATE}"
-    verbose "The debian/changelog header will be:"
-    verbose "$DEB_CHANGELOG"
-    verbose "The Debian package signature line will be:"
-    # Cannot use verbose here as it will strip the extra spaces required by Debian
-    $v && printf "${FINISH_LINE}\n"
-    echo -e "The Debian release will be tagged as \033[1;32m${DEBIAN_TAG}\033[0m."
-else
-    unset DEB_VERSION
-    echo
-fi
-
-# Final call before take off
-echo -e "I'll now prepare to release version \033[1;32m$VERSION\033[0m of \033[1;32m$PKG\033[0m"
-echo -e "TAG: \033[1m$GIT_TAG\033[0m | RPM: \033[1m$RPM_VERSION\033[0m | DEB: \033[1m$DEB_VERSION\033[0m"
-if $dry_run ; then
-    if [[ $quilt_refresh && -d debian/patches ]]; then
-        verbose "We will try to refresh Debian quilt patches to match current repository content."
-    fi
-    v=true
-    verbose "\033[1mThis is a dry run, I haven't touched a thing.\033[0m"
-    exit
-fi
-
-# Do the actual RPM changes
-echo -e "\033[1mRPM Processing in progress…\033[0m"
-rpm_set_version "$VERSION" "$relnum"
-
-# Do the actual DEB changes
-if [ -n "$debrel" ]; then
-    echo -e "\033[1mDEB Processing in progress…\033[0m"
-    for dir in $directories; do
-        # Loop on each directories, needed for pScheduler repository
-        cd $dir
-        if [ ! -f debian/changelog ]; then
-            # pScheduler directories sometimes have a second level
-            if [ -d pscheduler ]; then
-                # And python-pscheduler is an even more special case
-                cd pscheduler
+        if grep -qs '(native)' deb/source/format ; then
+            if [ -n "$RPM_VERSION" ]; then
+                verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
+                # Still, -d need to be used to build the Debian package…
             else
-                cd $dir
+                DEB_VERSION="${DEB_VERSION_DEFAULT}.${debrel}"
+                verbose "That's a Debian native package and Debian only subrelease (.$debrel)"
             fi
         fi
+
+        # Preparing debian git tag (~ are not allowed)
+        DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' $GBP_CONF`
+        DEBIAN_TAG="deb/$DEB_DISTRO/${DEB_VERSION/\~bpo/_bpo}"
+        DEBIAN_TAG="${DEBIAN_TAG/\~/-}"
+        # Check there is not an already existing Debian tag
+        if git tag -l | grep -q "^${DEBIAN_TAG}$" ; then
+            error "$DEBIAN_TAG is already existing in this repository."
+        fi
+
+         # Preparing deb/changelog
+        DEB_CHANGELOG="$DEB_PKG ($DEB_VERSION) perfsonar-${VERSION%.*}; urgency=low"
+        # If it's a DEB only release
+        if [ -z "$RPM_VERSION" ]; then
+            # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
+            if git diff --name-only $GIT_TAG -- | grep -Ev "(^deb/|/deb/)"; then
+                error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
+            fi
+        fi
+
+        # Replace deb/changelog signature line with commiter or DEBEMAIL info
+        # Note: DEBEMAIL and DEBFULLNAME variables are also used by the Debian helper scripts (dh_*)
+        if [ -z "$DEBEMAIL" ]; then
+            DEBEMAIL="debian@perfsonar.net"
+        fi
+        if [ -z "$DEBFULLNAME" ]; then
+            DEBFULLNAME="perfSONAR developers"
+        fi
+        # We use a date format that is working on both Linux and BSD
+        DATE=`LANG=C date "+%a, %d %b %Y %T %z"`
+        FINISH_LINE=" -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DATE}"
+        verbose "The deb/changelog header will be:"
+        verbose "$DEB_CHANGELOG"
+        verbose "The Debian package signature line will be:"
+        # Cannot use verbose here as it will strip the extra spaces required by Debian
+        $v && printf "${FINISH_LINE}\n"
+        echo -e "The Debian release will be tagged as \033[1;32m${DEBIAN_TAG}\033[0m."
+        # Final call before take off
+        echo -e "I'll now prepare to release version \033[1;32m$VERSION\033[0m of \033[1;32m$PKG\033[0m"
+        echo -e "TAG: \033[1m$GIT_TAG\033[0m | RPM: \033[1m$RPM_VERSION\033[0m | DEB: \033[1m$DEB_VERSION\033[0m"
+        if $dry_run ; then
+            if [[ $quilt_refresh && -d deb/patches ]]; then
+                verbose "We will try to refresh Debian quilt patches to match current repository content."
+            fi
+            v=true
+            verbose "\033[1mThis is a dry run, I haven't touched a thing.\033[0m"
+            exit
+        fi
+
+        # Do the actual DEB changes
+        echo -e "\033[1mDEB Processing in progress…\033[0m"
+        # Loop on each directories
+
         # Refresh quilt patches if needed (if a refresh is not possible, this will stop and manual correction should happen)
-        if [[ $quilt_refresh && -s debian/patches/series ]]; then
+        if [[ $quilt_refresh && -s deb/patches/series ]]; then
+            UNIBUILD_PKG_PATH="."
+            if [ "${PWD##*/}" == "unibuild-packaging" ]; then
+                pushd ..
+                UNIBUILD_PKG_PATH="./unibuild-packaging"
+            fi
             verbose "Trying to refresh quilt patches to latest merge."
-            export QUILT_PATCHES="debian/patches"
+            export QUILT_PATCHES="${UNIBUILD_PKG_PATH}/deb/patches"
             export QUILT_REFRESH_ARGS="-p ab --no-index"
             [ -f .pc/applied-patches ] && error "Quilt state is not clean, check your .pc directory. Cannot continue"
             quilt --quiltrc - push -aq --refresh > /dev/null
             [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
             quilt pop -aq > /dev/null
             [ $? -eq 0 ] || error "Something went wrong trying to reverse the quilt patches."
-            git add debian/patches
+            git add "${UNIBUILD_PKG_PATH}/deb/patches"
+            if [ "${UNIBUILD_PKG_PATH}" != "." ]; then
+                popd
+            fi
         fi
 
-        # Update the debian/changelog file
-        n=`grep -nm 1 " -- " debian/changelog | awk -F ':' '{print $1}'`
+        # Update the deb/changelog file
+        n=`grep -nm 1 " -- " deb/changelog | awk -F ':' '{print $1}'`
         TMP_FILE=`mktemp`
-        sed "${n}s/^ -- .* [+-][0-9]\{4\}/${FINISH_LINE}/" debian/changelog > "$TMP_FILE"
-        if [[ "$PKG" == "pscheduler" ]]; then
-            echo "${DEB_CHANGELOG/pscheduler-server/$dir}" > debian/changelog
-        else
-            echo "$DEB_CHANGELOG" > debian/changelog
-        fi
-        tail -n +2 "$TMP_FILE" >> debian/changelog
+        sed "${n}s/^ -- .* [+-][0-9]\{4\}/${FINISH_LINE}/" deb/changelog > "$TMP_FILE"
+        echo "$DEB_CHANGELOG" > deb/changelog
+        tail -n +2 "$TMP_FILE" >> deb/changelog
         /bin/rm "$TMP_FILE"
-        git add debian/changelog
-        cd "$MYCWD"
+        git add deb/changelog
     done
+else
+    unset DEB_VERSION
+    echo
 fi
+cd "$MYCWD"
+
+# Do the actual RPM changes
+echo -e "\033[1mRPM Processing in progress…\033[0m"
+rpm_set_version "$VERSION" "$relnum"
+
 
 # Check if there are no pending changes in the repository
 if git status --porcelain | grep -E '^.[^ ] '; then
@@ -320,7 +306,7 @@ else
         git pull
         if ! git merge --no-ff --no-commit $VERSION; then
             # Force gbp.conf on master
-            echo "We'll force debian/gbp.conf to be from master, hope this will solve the conflicting merge..."
+            echo "We'll force deb/gbp.conf to be from master, hope this will solve the conflicting merge..."
             find . -type f -name gbp.conf -exec git checkout master -- {} \;
             find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
             find . -type f -name gbp.conf -exec git add {} \;
@@ -328,8 +314,7 @@ else
                 error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
             fi
         else
-            # We must keep debian/gbp.conf from master and force to build from master
-            # Doing it with find, so it works with pScheduler repo too
+            # We must keep deb/gbp.conf from master and force to build from master
             find . -type f -name gbp.conf -exec git checkout master -- {} \;
             find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
             find . -type f -name gbp.conf -exec git add {} \;
