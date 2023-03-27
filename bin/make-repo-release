@@ -128,6 +128,8 @@ else
     verbose "This is a dual RPM and DEB release."
     if [[ -n "$debrel" && "$debrel" != "1" ]]; then
         error "For a dual RPM and DEB release, debrel must be 1 as it's the first package release for this version."
+    else
+        debrel=1
     fi
 fi
 
@@ -149,10 +151,12 @@ fi
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then
     #HACK: Ignore external pscheduler packages with versions we want to leave alone
-    directories=( $(find . -type d -path \*unibuild-packaging/deb) )
+    directories=( $(find -E . -type d -path \*/unibuild-packaging/deb $FIND_IGNORE ) )
     if [[ "$PKG" == "pscheduler" ]]; then
-        directories=( $(find . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb) \
-            $(find . -type d -path \*python-pscheduler/\*unibuild-packaging/deb) )
+        directories=( \
+            $(find -E . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb $FIND_IGNORE ) \
+            $(find -E . -type d -path \*python-pscheduler/\*unibuild-packaging/deb $FIND_IGNORE ) \
+        )
     fi
     for dir in ${directories[@]}; do
         echo ""
@@ -161,18 +165,11 @@ if [ -n "$debrel" ]; then
         cd "$MYCWD"
         cd $dir/..
         echo "$PWD"
-        GBP_CONF="deb/gbp.conf"
         DEB_PKG=`awk 'NR==1 {print $1}' deb/changelog`
-        if [[ -f deb/changelog && -f deb/gbp.conf ]]; then
-            verbose "$dir/deb/changelog and $dir/deb/gbp.conf are present, that's a good start."
+        if [[ -f deb/changelog ]]; then
+            verbose "$dir/deb/changelog is present, that's a good start."
         else
-            error "$dir doesn't look like a Debian packaging tree, I cannot find deb/changelog or deb/gbp.conf."
-        fi
-        DEBIAN_BRANCH=`awk -F '=' '/debian-branch/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' $GBP_CONF`
-        if [ "$BRANCH" == "$DEBIAN_BRANCH" ]; then
-            verbose "Current git branch ($BRANCH) matches the gbp configured branch ($DEBIAN_BRANCH)."
-        else
-            error "Your current git branch ($BRANCH) is not the same as the branch configured for gbp ($DEBIAN_BRANCH)."
+            error "$dir doesn't look like a Debian packaging tree, I cannot find deb/changelog"
         fi
         if grep -qs '(native)' deb/source/format ; then
             if [ -n "$RPM_VERSION" ]; then
@@ -185,8 +182,7 @@ if [ -n "$debrel" ]; then
         fi
 
         # Preparing debian git tag (~ are not allowed)
-        DEB_DISTRO=`awk -F 'DIST=' '/builder/ {gsub(/[ \t]+.*$/, "", $2); print $2}' $GBP_CONF`
-        DEBIAN_TAG="deb/$DEB_DISTRO/${DEB_VERSION/\~bpo/_bpo}"
+        DEBIAN_TAG="deb/${DEB_VERSION/\~bpo/_bpo}"
         DEBIAN_TAG="${DEBIAN_TAG/\~/-}"
         # Check there is not an already existing Debian tag
         if git tag -l | grep -q "^${DEBIAN_TAG}$" ; then
@@ -198,7 +194,7 @@ if [ -n "$debrel" ]; then
         # If it's a DEB only release
         if [ -z "$RPM_VERSION" ]; then
             # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
-            if git diff --name-only $GIT_TAG -- | grep -Ev "(^deb/|/deb/)"; then
+            if git diff --name-only $GIT_TAG -- | grep -Ev "(^|/)unibuild-packaging/deb/)"; then
                 error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
             fi
         fi
@@ -304,22 +300,7 @@ else
         # Switch to master and merge, only for final releases
         git checkout master
         git pull
-        if ! git merge --no-ff --no-commit $VERSION; then
-            # Force gbp.conf on master
-            echo "We'll force deb/gbp.conf to be from master, hope this will solve the conflicting merge..."
-            find . -type f -name gbp.conf -exec git checkout master -- {} \;
-            find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
-            find . -type f -name gbp.conf -exec git add {} \;
-            if ! git commit -m "Merge branch $VERSION into master"; then
-                error "Merge of $VERSION into master is not clean, there's a problem. No tags added."
-            fi
-        else
-            # We must keep deb/gbp.conf from master and force to build from master
-            find . -type f -name gbp.conf -exec git checkout master -- {} \;
-            find . -type f -name gbp.conf -exec sed -i '' "s/-branch = .*/-branch = master/" {} \;
-            find . -type f -name gbp.conf -exec git add {} \;
-            git commit -m "Merge branch $VERSION into master"
-        fi
+        git merge $VERSION
     fi
     
     # Adding tags
