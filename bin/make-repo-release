@@ -194,7 +194,7 @@ if [ -n "$debrel" ]; then
         # If it's a DEB only release
         if [ -z "$RPM_VERSION" ]; then
             # Check if there are no source code difference between the GIT_TAG and the DEBIAN_TAG
-            if git diff --name-only $GIT_TAG -- | grep -Ev "(^|/)unibuild-packaging/deb/)"; then
+            if git diff --name-only $GIT_TAG -- | grep -Ev "/unibuild-packaging/deb/"; then
                 error "There are source code changes between $GIT_TAG and proposed Debian release. This will break the Debian build."
             fi
         fi
@@ -217,7 +217,7 @@ if [ -n "$debrel" ]; then
         $v && printf "${FINISH_LINE}\n"
         echo -e "The Debian release will be tagged as \033[1;32m${DEBIAN_TAG}\033[0m."
         # Final call before take off
-        echo -e "I'll now prepare to release version \033[1;32m$VERSION\033[0m of \033[1;32m$PKG\033[0m"
+        echo -e "I'll now prepare to release version \033[1;32m$VERSION\033[0m of \033[1;32m$DEB_PKG\033[0m"
         echo -e "TAG: \033[1m$GIT_TAG\033[0m | RPM: \033[1m$RPM_VERSION\033[0m | DEB: \033[1m$DEB_VERSION\033[0m"
         if $dry_run ; then
             if [[ $quilt_refresh && -d deb/patches ]]; then
@@ -268,9 +268,11 @@ else
 fi
 cd "$MYCWD"
 
-# Do the actual RPM changes
-echo -e "\033[1mRPM Processing in progress…\033[0m"
-rpm_set_version "$VERSION" "$relnum"
+if [ -n "$RPM_VERSION" ]; then
+    # Do the actual RPM changes
+    echo -e "\033[1mRPM Processing in progress…\033[0m"
+    rpm_set_version "$VERSION" "$relnum"
+fi
 
 
 # Check if there are no pending changes in the repository
@@ -308,6 +310,8 @@ else
         git tag "${GIT_TAG}"
     fi
     if [ -n "$DEB_VERSION" ]; then
+        # TODO: we should do this only if this is a Debian repackage (-2)
+        # TODO: and we should enable the possibility to do it for RPM too
         git tag "${DEBIAN_TAG}"
     fi
     echo "If you're happy with the commit and tag(s) above, you just need to push that away!"
