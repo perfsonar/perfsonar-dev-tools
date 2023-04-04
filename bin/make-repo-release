@@ -161,7 +161,6 @@ if [ -n "$debrel" ]; then
     for dir in ${directories[@]}; do
         echo ""
         echo "Processing $dir"
-        DEB_VERSION="$DEB_VERSION_DEFAULT-$debrel"
         cd "$MYCWD"
         cd $dir/..
         echo "$PWD"
@@ -174,11 +173,13 @@ if [ -n "$debrel" ]; then
         if grep -qs '(native)' deb/source/format ; then
             if [ -n "$RPM_VERSION" ]; then
                 verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
-                # Still, -d need to be used to build the Debian package…
+                DEB_VERSION="${DEB_VERSION_DEFAULT}"
             else
                 DEB_VERSION="${DEB_VERSION_DEFAULT}.${debrel}"
                 verbose "That's a Debian native package and Debian only subrelease (.$debrel)"
             fi
+        else
+            DEB_VERSION="$DEB_VERSION_DEFAULT-$debrel"
         fi
 
         # Preparing debian git tag (~ are not allowed)
