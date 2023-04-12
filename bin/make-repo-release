@@ -242,7 +242,7 @@ if [ -n "$debrel" ]; then
             fi
             verbose "Trying to refresh quilt patches to latest merge."
             export QUILT_PATCHES="${UNIBUILD_PKG_PATH}/deb/patches"
-            export QUILT_REFRESH_ARGS="-p ab --no-index"
+            export QUILT_REFRESH_ARGS="-p ab"
             [ -f .pc/applied-patches ] && error "Quilt state is not clean, check your .pc directory. Cannot continue"
             quilt --quiltrc - push -aq --refresh > /dev/null
             [ $? -eq 0 ] || quilt --quiltrc - push -aq --refresh || error "Something went wrong trying to refresh the quilt patches."
