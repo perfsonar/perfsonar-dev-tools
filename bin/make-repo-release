@@ -303,9 +303,15 @@ else
     
     if $merge_to_master; then
         # Switch to master and merge, only for final releases
+        echo "Merging to master"
         git checkout master
         git pull
         git merge $VERSION
+        if [ $? -ne 0 ]; then
+            echo "Merge to master failed"
+            exit 1
+        fi
+        echo "DONE"
     fi
     
     # Adding tags
