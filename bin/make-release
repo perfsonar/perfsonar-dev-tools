@@ -78,7 +78,7 @@ do
         #TODO: MERGE FORWARD INTO NEXT MAJOR release if exists
         for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${VERSION}")
         do
-            narate "Merging into $NEXT_VERSION"
+            narrate "Merging into $NEXT_VERSION"
             # checkout branches since git sometimes needs this to merge
             git checkout "$VERSION"
             NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace
