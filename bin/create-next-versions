@@ -32,7 +32,7 @@ do
         # Or says that when MYNEXTVERSIONS is set we force update?
         continue
     else
-        git checkout -b "${VERSION}"
+        git checkout -b "${VERSION}" "$THIS_BRANCH"
     fi
     # Make sure we don't change anything in submodules
     git submodule deinit -f .
