@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # For a given version number, calculate the set of next-possible
 # versions.

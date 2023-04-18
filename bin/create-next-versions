@@ -37,7 +37,7 @@ do
     # Make sure we don't change anything in submodules
     git submodule deinit -f .
     rpm_set_version "$VERSION" "$RELNUM" || :
-    deb_set_new_version "$VERSION" "$RELNUM" || :
+    deb_set_new_version "$VERSION" "$RELNUM" "$THIS_BRANCH" || :
     git commit -m "Preparing packaging for next version: v$VERSION-$RELNUM"
     git push origin "${VERSION}"
     git branch --set-upstream-to="origin/${VERSION}" "${VERSION}"

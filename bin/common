@@ -115,6 +115,7 @@ deb_set_new_version()
 {
     [ "$1" ] && export VERSION="$1" || error "Version not provided"
     [ "$2" ] && RELNUM="$2" || error "Release Number not provided"
+    [ "$3" ] && PREV_VERSION="$3" || error "Previous version not provided"
     if [ "0" = "${RELNUM%%.*}" ]; then
         # Starting with a "0.", that's an alpha, beta or RC
         DEB_VERSION="$VERSION~${RELNUM#*\.}"
@@ -138,58 +139,43 @@ deb_set_new_version()
         DEBFULLNAME="perfSONAR developers"
     fi
 
-    # Add a new changelog entry
-    if [[ "${PWD##*\/}" == "pscheduler" ]]; then
-        MYCWD=`pwd`
-        # If we're in the pscheduler repo, we must loop on all packages
-        for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
-            if [ -d "$dir/$dir" ]; then
-                MYDIR="$dir/$dir"
-            elif [ -d "$dir/pscheduler" ]; then
-                MYDIR="$dir/pscheduler"
-            else
-                MYDIR="$dir"
-            fi
-            deb_change_changelog
-            cd "$MYCWD"
-        done
-    else
-        MYDIR="."
+    for dir in `find -E . -type d -path *unibuild-packaging/deb $FIND_IGNORE`; do
+        MYDIR="$dir"
         deb_change_changelog
-    fi
-
+    done
 }
 
 # Set debian/ dir specific files
 deb_change_changelog()
 {
-    if [ -f "$MYDIR/debian/changelog" ]; then
-        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+    if [ -f "$MYDIR/changelog" ] && head -1 "$MYDIR/changelog" | grep -q "$PREV_VERSION" ; then
+        # We filter on previous version so not to alter the changelog files of dependencies packages we keep in our repos (mostly in pscheduler, but not only)
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/changelog"`
         printf "$DEB_PKG ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n\n" > "$TMP_FILE"
-        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
-        /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
-        git add "$MYDIR/debian/changelog"
+        cat "$MYDIR/changelog" >> "$TMP_FILE"
+        /bin/mv "$TMP_FILE" "$MYDIR/changelog"
+        git add "$MYDIR/changelog"
     fi
 }
 
 # Correct debian/changelog after a merge forward
 deb_correct_changelog()
 {
-    if [ -f "$MYDIR/debian/changelog" ]; then
+    if [ -f "$MYDIR/changelog" ]; then
         TMP_FILE=`mktemp`
         # Save debian/changelog changes local to this branch
-        git checkout "$NEXT_VERSION" "$MYDIR/debian/changelog"
-        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+        git checkout "$NEXT_VERSION" "$MYDIR/changelog"
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/changelog"`
         # Local to this branch means we drop all that is from previous MINOR
-        perl -ne "print unless /$DEB_PKG \(${MINOR}/ .. eof" "$MYDIR/debian/changelog" > "$TMP_FILE"
+        perl -ne "print unless /$DEB_PKG \(${MINOR}/ .. eof" "$MYDIR/changelog" > "$TMP_FILE"
         # debian/changelog must always be ordered by version number (not by date)
-        git checkout "$VERSION" "$MYDIR/debian/changelog"
+        git checkout "$VERSION" "$MYDIR/changelog"
         # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
-        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" "$MYDIR/debian/changelog"
+        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" "$MYDIR/changelog"
         # And bring back saved changes
-        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
-        /bin/mv -f "$TMP_FILE" "$MYDIR/debian/changelog"
-        git add "$MYDIR/debian/changelog"
+        cat "$MYDIR/changelog" >> "$TMP_FILE"
+        /bin/mv -f "$TMP_FILE" "$MYDIR/changelog"
+        git add "$MYDIR/changelog"
     fi
 }
 
