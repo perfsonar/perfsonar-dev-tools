@@ -7,9 +7,6 @@
 #   git checkout a.b.c
 #   ../perfsonar-dev-tools/bin/merge-repo-forward a.d.e
 # 
-# If you don't want to merge an existing tag but only the branch,
-# set the MERGETAG environment variable to false:
-#   MERGETAG=false ../perfsonar-dev-tools/bin/merge-repo-forward a.d.e
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"

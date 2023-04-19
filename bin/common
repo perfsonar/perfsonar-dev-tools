@@ -12,7 +12,10 @@ LIBEXEC="${TOP}/libexec"
 PATH="${WHEREAMI}:${PATH}"
 
 # Git projects we want to release
-PROJECTS=("pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "esmond" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web")
+PROJECTS=("pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web" "archive" "logstash" "elmond")
+
+# Directories we want to ignore
+FIND_IGNORE=-not\ -regex\ '.*/(unibuild-work|multiarch_build)/.*'
 
 # Print something if stdout is a terminal
 narrate()
@@ -91,19 +94,19 @@ rpm_set_version()
     # sed -i behaves differently on BSD, so using temporary file
     export TMP_FILE=`mktemp`
     # Update .spec version
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update .spec relnum
-    find . -type f -name "*.spec*" -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+$/%define perfsonar_auto_relnum ${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+$/%define perfsonar_auto_relnum ${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile version
-    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile relnum
-    find . -type f -name Makefile -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update configure.ac version
-    find . -type f -name configure.ac -exec sh -c 'for f do sed -E "s/^AC_INIT\((owamp|I2util),[[:space:]]*[[:digit:].]+,/AC_INIT(\1, ${MY_VERSION},/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_INIT\((owamp|I2util),[[:space:]]*[[:digit:].]+,/AC_INIT(\1, ${MY_VERSION},/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update configure.ac relnum
-    find . -type f -name configure.ac -exec sh -c 'for f do sed -E "s/^AC_SUBST\(PATCH_LEVEL,[[:space:]]*[[:alnum:].]+\)/AC_SUBST(PATCH_LEVEL, ${MY_RELNUM})/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_SUBST\(PATCH_LEVEL,[[:space:]]*[[:alnum:].]+\)/AC_SUBST(PATCH_LEVEL, ${MY_RELNUM})/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update pom.xml version
-    find . -type f -name pom.xml -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${MY_VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find -E . -type f -name pom.xml $FIND_IGNORE -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${MY_VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     /bin/rm -f "$TMP_FILE"
 }
 
@@ -112,6 +115,7 @@ deb_set_new_version()
 {
     [ "$1" ] && export VERSION="$1" || error "Version not provided"
     [ "$2" ] && RELNUM="$2" || error "Release Number not provided"
+    [ "$3" ] && PREV_VERSION="$3" || error "Previous version not provided"
     if [ "0" = "${RELNUM%%.*}" ]; then
         # Starting with a "0.", that's an alpha, beta or RC
         DEB_VERSION="$VERSION~${RELNUM#*\.}"
@@ -135,61 +139,43 @@ deb_set_new_version()
         DEBFULLNAME="perfSONAR developers"
     fi
 
-    # Change gbp.conf to build from new branch
-    find . -type f -name gbp.conf -exec sh -c 'for f do sed "/^upstream-branch =/ s/.*/upstream-branch = $VERSION/" "$f" > "$TMP_FILE"; sed "/^debian-branch =/ s/.*/debian-branch = $VERSION/" "$TMP_FILE" > "$f"; git add "$f"; done' find-sh {} \;
-
-    # Add a new changelog entry
-    if [[ "${PWD##*\/}" == "pscheduler" ]]; then
-        MYCWD=`pwd`
-        # If we're in the pscheduler repo, we must loop on all packages
-        for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
-            if [ -d "$dir/$dir" ]; then
-                MYDIR="$dir/$dir"
-            elif [ -d "$dir/pscheduler" ]; then
-                MYDIR="$dir/pscheduler"
-            else
-                MYDIR="$dir"
-            fi
-            deb_change_changelog
-            cd "$MYCWD"
-        done
-    else
-        MYDIR="."
+    for dir in `find -E . -type d -path *unibuild-packaging/deb $FIND_IGNORE`; do
+        MYDIR="$dir"
         deb_change_changelog
-    fi
-
+    done
 }
 
 # Set debian/ dir specific files
 deb_change_changelog()
 {
-    if [ -f "$MYDIR/debian/changelog" ]; then
-        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+    if [ -f "$MYDIR/changelog" ] && head -1 "$MYDIR/changelog" | grep -q "$PREV_VERSION" ; then
+        # We filter on previous version so not to alter the changelog files of dependencies packages we keep in our repos (mostly in pscheduler, but not only)
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/changelog"`
         printf "$DEB_PKG ($DEB_VERSION) $PS_REPO; urgency=low\n\n  * New upstream version.\n\n -- $DEBFULLNAME <$DEBEMAIL>  $DEB_DATE\n\n" > "$TMP_FILE"
-        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
-        /bin/mv "$TMP_FILE" "$MYDIR/debian/changelog"
-        git add "$MYDIR/debian/changelog"
+        cat "$MYDIR/changelog" >> "$TMP_FILE"
+        /bin/mv "$TMP_FILE" "$MYDIR/changelog"
+        git add "$MYDIR/changelog"
     fi
 }
 
 # Correct debian/changelog after a merge forward
 deb_correct_changelog()
 {
-    if [ -f "$MYDIR/debian/changelog" ]; then
+    if [ -f "$MYDIR/changelog" ]; then
         TMP_FILE=`mktemp`
         # Save debian/changelog changes local to this branch
-        git checkout "$NEXT_VERSION" "$MYDIR/debian/changelog"
-        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/debian/changelog"`
+        git checkout "$NEXT_VERSION" "$MYDIR/changelog"
+        DEB_PKG=`perl -ne 'do {print $1; last} if /(^[^ ]+)/' "$MYDIR/changelog"`
         # Local to this branch means we drop all that is from previous MINOR
-        perl -ne "print unless /$DEB_PKG \(${MINOR}/ .. eof" "$MYDIR/debian/changelog" > "$TMP_FILE"
+        perl -ne "print unless /$DEB_PKG \(${MINOR}/ .. eof" "$MYDIR/changelog" > "$TMP_FILE"
         # debian/changelog must always be ordered by version number (not by date)
-        git checkout "$VERSION" "$MYDIR/debian/changelog"
+        git checkout "$VERSION" "$MYDIR/changelog"
         # Remove any entries not yet released (i.e. not having a distro field like perfsonar-x.y)
-        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" "$MYDIR/debian/changelog"
+        perl -i -ne "print if /$DEB_PKG \(.*\) perfsonar-$MINOR; / .. eof" "$MYDIR/changelog"
         # And bring back saved changes
-        cat "$MYDIR/debian/changelog" >> "$TMP_FILE"
-        /bin/mv -f "$TMP_FILE" "$MYDIR/debian/changelog"
-        git add "$MYDIR/debian/changelog"
+        cat "$MYDIR/changelog" >> "$TMP_FILE"
+        /bin/mv -f "$TMP_FILE" "$MYDIR/changelog"
+        git add "$MYDIR/changelog"
     fi
 }
 

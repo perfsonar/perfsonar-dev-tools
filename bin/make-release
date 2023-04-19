@@ -57,8 +57,8 @@ do
     
     # Process RPM and DEB files for release
     DEB_OPT=""
-    if [[ -d debian || -d pscheduler-server/pscheduler-server/debian ]]; then
-        # only set a debian release if we actually have a debian directory or we are in the pscheduler repo
+    if [[ -n $(find . -type d -path \*unibuild-packaging/deb) ]]; then
+        # only set a debian release if we actually have a debian directory
         DEB_OPT="-d 1"
     fi
     ${WHEREAMI}/make-repo-release -r "$RELNUM" $DEB_OPT "$VERSION"
@@ -78,6 +78,7 @@ do
         #TODO: MERGE FORWARD INTO NEXT MAJOR release if exists
         for NEXT_VERSION in $("${WHEREAMI}/next-versions" "${VERSION}")
         do
+            narrate "Merging into $NEXT_VERSION"
             # checkout branches since git sometimes needs this to merge
             git checkout "$VERSION"
             NEXT_VERSION="$(echo "${NEXT_VERSION}" | tr -d '[:space:]')" #trim whitespace

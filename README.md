@@ -1,5 +1,19 @@
 # Development Tools for perfSONAR Developers
 
+## Git setup
+For a nice git history flow, it is good to change a few git default settings.  In your ~/.gitconfig file,
+you can set the following sections:
+
+```
+[i18n]
+    commitencoding = utf-8      # To work with all UTF characters
+[pull]
+    rebase = true               # To have a nice and clear history, this rebase your current changes on top of what you pull from the remote
+[init]
+    defaultBranch = main        # To use the GitHub defaults
+```
+
+
 ## Git Hook Installer
 
 The `install-git-hooks` program installs Git client-side hooks to
