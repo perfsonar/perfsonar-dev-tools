@@ -10,6 +10,7 @@
 
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"
+MYCWD=`pwd`
 
 # Get version parameter
 VERSION=$1
@@ -18,37 +19,25 @@ if [ -z "$VERSION" ]; then
 fi
 
 # Initialisations
+GITREPO="${PWD##*\/}"
 MINOR=${VERSION%.*}
 NEXT_VERSION=`git branch | grep \* | cut -d ' ' -f2`
 if [[ $VERSION > $NEXT_VERSION ]]; then
     die "Current branch ($NEXT_VERSION) is lower than $VERSION"
 fi
 
-# Check if the released patch release is already merged into the NEXT_VERSION
-CHANGELOG=`find . -type f -name changelog` 
-if [ -n "$CHANGELOG" ]; then
-    # We have a Debian package, so the content of debian/changelog should tell us if the final release needs to be merged
-    if grep -qs "($VERSION~" $CHANGELOG && git tag -l | grep -qE "^v${VERSION}$"; then
-        # Only an alpha or beta release was merged into the NEXT_VERSION branch, we need to merge the final release (i.e. the tag)
-        echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
-        VERSION="v$VERSION"
-    else
-        echo "Only an alpha or beta release was merged into $NEXT_VERSION, I'll do a direct merge from $VERSION."
-    fi
+# Check what we need to merge
+if git tag -l | grep -qE "^v${VERSION}$"; then
+    echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
+    VERSION="v$VERSION"
 else
-    # We're on a RPM only repository
-    if git tag -l | grep -qE "^v${VERSION}$"; then
-        echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
-        VERSION="v$VERSION"
-    else
-        echo "No tag found, I'll do a direct merge from $VERSION."
-    fi
+    echo "No tag found, I'll do a direct merge from $VERSION."
 fi
 
 # RPM files
-SPECFILES=`find . -type f -name "*.spec*"`
-MAKEFILES=`find . -type f -name Makefile`
-CONFFILES=`find . -type f -name configure.ac`
+SPECFILES=`find -E . -type f -name "*.spec*" $FIND_IGNORE`
+MAKEFILES=`find -E . -type f -name Makefile $FIND_IGNORE`
+CONFFILES=`find -E . -type f -name configure.ac $FIND_IGNORE`
 
 # TODO: does this work when merging a non released branch?
 # Try to merge patch branch into minor branch
@@ -118,27 +107,26 @@ AC_SUBST\(PATCH_LEVEL, 1\)
         fi
 
         ### Secondly, Debian packaging related files
-        # Keep the gbp settings from the current branch (using find so we care for the pScheduler repo)
-        find . -type f -name gbp.conf -exec git checkout "$NEXT_VERSION" {} \;
         # And correct the debian/changelog with the extraneous merged entries
-        if [[ "${PWD##*\/}" == "pscheduler" ]]; then
-            MYCWD=`pwd`
-            # If we're in the pscheduler repo, we must loop on all packages
-            for dir in `ls -1d pscheduler-* python-pscheduler | grep -v "pscheduler-rpm"`; do
-                if [ -d "$dir/$dir" ]; then
-                    MYDIR="$dir/$dir"
-                elif [ -d "$dir/pscheduler" ]; then
-                    MYDIR="$dir/pscheduler"
-                else
-                    MYDIR="$dir"
-                fi
-                deb_correct_changelog
-                cd "$MYCWD"
-            done
-        else
+        #HACK: Ignore external pscheduler packages with versions we want to leave alone
+        directories=( $(find -E . -type d -path \*/unibuild-packaging/deb $FIND_IGNORE ) )
+        if [[ "$GITREPO" == "pscheduler" ]]; then
+            directories=( \
+                $(find -E . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb $FIND_IGNORE ) \
+                $(find -E . -type d -path \*python-pscheduler/\*unibuild-packaging/deb $FIND_IGNORE ) \
+            )
+        elif [[ "$GITREPO" == "perl-shared" ]]; then
+            directories=( $(find -E . -type d -path \*libperfsonar\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
+        fi
+        for dir in ${directories[@]}; do
+            echo ""
+            echo "Processing $dir"
+            cd "$MYCWD"
+            cd $dir
+            echo "$PWD"
             MYDIR="."
             deb_correct_changelog
-        fi
+        done
 
         # Then, try to finalise merge
         git commit -m "Merging $VERSION into $NEXT_VERSION"

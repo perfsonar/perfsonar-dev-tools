@@ -151,6 +151,7 @@ fi
 # Check all is fine and prepare for the Debian release
 if [ -n "$debrel" ]; then
     #HACK: Ignore external pscheduler packages with versions we want to leave alone
+    # TODO: This exists in merge-repo-forward too, we should abstract that in common
     directories=( $(find -E . -type d -path \*/unibuild-packaging/deb $FIND_IGNORE ) )
     if [[ "$PKG" == "pscheduler" ]]; then
         directories=( \
