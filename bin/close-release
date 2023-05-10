@@ -5,6 +5,7 @@
 # Usage:
 #       close-release VERSION
 
+MYCWD=$(pwd)
 WHEREAMI=$(dirname $0)
 . "${WHEREAMI}/common"
 
@@ -25,7 +26,7 @@ do
     # checkout clean copy
     narrate ""
     narrate "[${PROJECT}]"
-    GIT_URL="https://github.com/perfsonar/${PROJECT}"
+    GIT_URL="git@github.com:perfsonar/${PROJECT}.git"
     narrate "Downloading $GIT_URL"
     git clone "$GIT_URL" "$PROJECT"
     
@@ -43,7 +44,7 @@ do
     git checkout "$VERSION"
     
     # and close
-    ${WHEREAMI}/close-branch
+    ${MYCWD}/close-branch
 done
 
 # Clean-up TEMPDIR

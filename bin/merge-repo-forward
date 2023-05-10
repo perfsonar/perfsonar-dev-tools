@@ -28,8 +28,9 @@ fi
 
 # Check what we need to merge
 if git tag -l | grep -qE "^v${VERSION}$"; then
+    # Get most recent tag from VERSION
     echo "A git tag (v${VERSION}) already exists from branch ${VERSION}, I'll be merging the tag."
-    VERSION="v$VERSION"
+    TAG=`git tag -l --sort=-creatordate "v$VERSION*" "deb/$VERSION*" "rpm/$VERSION*" | head -1`
 else
     echo "No tag found, I'll do a direct merge from $VERSION."
 fi
@@ -45,7 +46,7 @@ if git merge -m "Merging $VERSION into $NEXT_VERSION" $VERSION; then
     # All is fine!
     exit 0
 else
-    if git tag -l | grep -qE "^${VERSION}$"; then
+    if git tag -l | grep -qE "^${TAG}$"; then
         # We have a tag from this version, it means we need to make some special changes
         echo
         echo "Trying semi-automatic merge with heuristics from our own script."
@@ -112,9 +113,14 @@ AC_SUBST\(PATCH_LEVEL, 1\)
         directories=( $(find -E . -type d -path \*/unibuild-packaging/deb $FIND_IGNORE ) )
         if [[ "$GITREPO" == "pscheduler" ]]; then
             directories=( \
+                $(find -E . -type d -path \*owamp/\*unibuild-packaging/deb $FIND_IGNORE ) \
                 $(find -E . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb $FIND_IGNORE ) \
                 $(find -E . -type d -path \*python-pscheduler/\*unibuild-packaging/deb $FIND_IGNORE ) \
             )
+            # We also need to skip the PDK changelogs
+            git checkout -f $NEXT_VERSION -- scripts/PDK/templates/archiver/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
+            git checkout -f $NEXT_VERSION -- scripts/PDK/templates/test/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
+            git checkout -f $NEXT_VERSION -- scripts/PDK/templates/tool/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
         elif [[ "$GITREPO" == "perl-shared" ]]; then
             directories=( $(find -E . -type d -path \*libperfsonar\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
         fi
@@ -129,7 +135,7 @@ AC_SUBST\(PATCH_LEVEL, 1\)
         done
 
         # Then, try to finalise merge
-        git commit -m "Merging $VERSION into $NEXT_VERSION"
+        git commit -m "Merging $TAG into $NEXT_VERSION"
     else
         die "Automatic merge failed, need to process manually."
     fi
