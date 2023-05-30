@@ -1,0 +1,19 @@
+#!/bin/sh -e
+#
+# Change the version in all RPM spec files.
+#
+# Usage: set-version OLD-VERSION NEW-VERSION RELNUM
+# E.g.:  set-version 1.2.3 1.2.4 0.a1.0 
+#
+
+WHEREAMI=$(dirname $0)
+. "${WHEREAMI}/common"
+
+[ "$1" ] && export OLD_VERSION="$1" || error "Release Number not provided"
+[ "$2" ] && export NEW_VERSION="$2" || error "Version not provided"
+[ "$3" ] && export RELNUM="$2" || error "Release Number not provided"
+
+narrate Setting RPM version
+rpm_set_version "${NEW_VERSION}" "${RELNUM}"
+narrate Setting Debian version
+deb_set_new_version "${NEW_VERSION}" "${RELNUM}" "${OLD_VERSION}"
