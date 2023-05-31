@@ -11,7 +11,7 @@ WHEREAMI=$(dirname $0)
 
 [ "$1" ] && export OLD_VERSION="$1" || error "Release Number not provided"
 [ "$2" ] && export NEW_VERSION="$2" || error "Version not provided"
-[ "$3" ] && export RELNUM="$2" || error "Release Number not provided"
+[ "$3" ] && export RELNUM="$3" || error "Release Number not provided"
 
 narrate Setting RPM version
 rpm_set_version "${NEW_VERSION}" "${RELNUM}"
