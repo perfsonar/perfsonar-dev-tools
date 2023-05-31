@@ -50,6 +50,22 @@ verbose() {
 }
 
 
+# Run find(1) in a way that supports regexps.
+if [ "$(uname -s)" = "Darwin" ]
+then
+    # macOS requires an extra switch.
+    find_re()
+    {
+	find -E "$@"
+    }
+else
+    find_re()
+    {
+	find "$@"
+    }
+fi
+
+
 # Find the top of a Git repo relative to the current directory or one
 # specified.
 repo_top()
@@ -94,19 +110,19 @@ rpm_set_version()
     # sed -i behaves differently on BSD, so using temporary file
     export TMP_FILE=`mktemp`
     # Update .spec version
-    find . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_version[[:space:]]+.+/%define perfsonar_auto_version ${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update .spec relnum
-    find . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+$/%define perfsonar_auto_relnum ${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name "*.spec*" $FIND_IGNORE -exec sh -c 'for f do sed -E "s/%define perfsonar_auto_relnum[[:space:]]+.+$/%define perfsonar_auto_relnum ${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile version
-    find . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_VERSION=.+/PERFSONAR_AUTO_VERSION=${MY_VERSION}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update Makefile relnum
-    find . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name Makefile $FIND_IGNORE -exec sh -c 'for f do sed -E "s/PERFSONAR_AUTO_RELNUM=.+/PERFSONAR_AUTO_RELNUM=${MY_RELNUM}/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update configure.ac version
-    find . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_INIT\((owamp|I2util),[[:space:]]*[[:digit:].]+,/AC_INIT(\1, ${MY_VERSION},/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_INIT\((owamp|I2util),[[:space:]]*[[:digit:].]+,/AC_INIT(\1, ${MY_VERSION},/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update configure.ac relnum
-    find . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_SUBST\(PATCH_LEVEL,[[:space:]]*[[:alnum:].]+\)/AC_SUBST(PATCH_LEVEL, ${MY_RELNUM})/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name configure.ac $FIND_IGNORE -exec sh -c 'for f do sed -E "s/^AC_SUBST\(PATCH_LEVEL,[[:space:]]*[[:alnum:].]+\)/AC_SUBST(PATCH_LEVEL, ${MY_RELNUM})/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     # Update pom.xml version
-    find . -type f -name pom.xml $FIND_IGNORE -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${MY_VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
+    find_re . -type f -name pom.xml $FIND_IGNORE -exec sh -c 'for f do sed -E "s/<perfsonar.auto.version>.+<\/perfsonar.auto.version>/<perfsonar.auto.version>${MY_VERSION}<\/perfsonar.auto.version>/" "$f" > "$TMP_FILE"; mv "$TMP_FILE" "$f"; git add "$f"; done' find-sh {} \;
     /bin/rm -f "$TMP_FILE"
 }
 
@@ -139,7 +155,7 @@ deb_set_new_version()
         DEBFULLNAME="perfSONAR developers"
     fi
 
-    for dir in `find . -type d -path *unibuild-packaging/deb $FIND_IGNORE`; do
+    for dir in `find_re . -type d -path *unibuild-packaging/deb $FIND_IGNORE`; do
         MYDIR="$dir"
         deb_change_changelog
     done
