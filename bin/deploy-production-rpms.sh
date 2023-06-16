@@ -6,8 +6,14 @@ if [ -z "$VERSION" ]; then
    exit 1
 fi
 
+EL_VERSION="$2"
+if [ -z "$EL_VERSION" ]; then
+   echo "Please specify EL version in command-line"
+   exit 1
+fi
+
 #handle optional parent directory
-PROD_REPO="$2"
+PROD_REPO="$3"
 if [ -z "$PROD_REPO" ]; then
     PROD_REPO="${HOME}/repos/production-rpms"
 fi 
@@ -18,12 +24,18 @@ fi
 WHEREAMI=`dirname $0`
 MYCWD=`pwd`
 
-PRODDIR_BASE="${PROD_REPO}/el7"
+PRODDIR_BASE="${PROD_REPO}/el${EL_VERSION}"
 PRODDIR_SUFFIX="${VERSION}"
-URL_BASE="https://perfsonar-dev3.grnoc.iu.edu/staging/el/7"
+URL_BASE="https://perfsonar-dev3.grnoc.iu.edu/staging/el/${EL_VERSION}"
 URL_SUFFIX="perfsonar/${VERSION}/packages"
 ARCHS=( "x86_64" "SRPMS" )
 TEMPDIR=`mktemp -d`
+
+#setup proper rpm signature settings
+RPMMACROS_PATH="${HOME}/.rpmmacros.${EL_VERSION}"
+if [ -f $RPMMACROS_PATH ]; then
+   cp -f ${RPMMACROS_PATH} ${HOME}/.rpmmacros
+fi
 
 #update the repos
 for ARCH in "${ARCHS[@]}"
