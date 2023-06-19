@@ -47,6 +47,11 @@ do
     ${MYCWD}/close-branch
 done
 
+# TODO: Should update the JENKINS jobs to build the next version
+echo "Jenkins jobs should be updated to build the next version:"
+echo "https://ps-jenkins.grnoc.iu.edu/jenkins/view/Unibuild/job/perfsonar-build-all/"
+echo "https://ps-jenkins.grnoc.iu.edu/jenkins/view/Debian/job/-%20Debian%20Docker%20Build%20All%20pS/"
+
 # Clean-up TEMPDIR
 echo ""
 rm -rf "$TEMPDIR"
