@@ -44,7 +44,7 @@ do
     git checkout "$VERSION"
     
     # and close
-    ${MYCWD}/close-branch
+    ${MYCWD}/bin/close-branch
 done
 
 # TODO: Should update the JENKINS jobs to build the next version

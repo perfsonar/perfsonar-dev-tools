@@ -12,7 +12,7 @@ LIBEXEC="${TOP}/libexec"
 PATH="${WHEREAMI}:${PATH}"
 
 # Git projects we want to release
-PROJECTS=("pscheduler" "psconfig" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web" "archive" "logstash" "elmond")
+PROJECTS=("psconfig" "pscheduler" "toolkit" "graphs" "bundles" "owamp" "perl-shared" "psTracerouteViewer" "ls-cache-daemon" "nagios" "ls-registration-daemon" "i2util" "docs" "perfsonar-testpoint-docker" "perfsonar-tools-docker" "maddash" "minor-packages" "perfsonar-repo" "sca-auth" "psconfig-web" "archive" "logstash" "elmond")
 
 # Directories we want to ignore
 FIND_IGNORE=-not\ -regex\ '.*/(unibuild-work|multiarch_build)/.*'
