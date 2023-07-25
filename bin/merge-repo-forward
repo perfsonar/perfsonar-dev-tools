@@ -121,6 +121,8 @@ AC_SUBST\(PATCH_LEVEL, 1\)
             git checkout -f $NEXT_VERSION -- scripts/PDK/templates/archiver/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
             git checkout -f $NEXT_VERSION -- scripts/PDK/templates/test/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
             git checkout -f $NEXT_VERSION -- scripts/PDK/templates/tool/__PLUGIN_NAME__/unibuild-packaging/deb/changelog
+        elif [[ "$GITREPO" == "psconfig" ]]; then
+            directories=( $(find -E . -type d -path \*psconfig\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
         elif [[ "$GITREPO" == "perl-shared" ]]; then
             directories=( $(find -E . -type d -path \*libperfsonar\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
         fi
