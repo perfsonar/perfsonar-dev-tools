@@ -158,6 +158,8 @@ if [ -n "$debrel" ]; then
             $(find -E . -type d -path \*pscheduler-\*/\*unibuild-packaging/deb $FIND_IGNORE ) \
             $(find -E . -type d -path \*python-pscheduler/\*unibuild-packaging/deb $FIND_IGNORE ) \
         )
+    elif [[ "$PKG" == "elmond" ]]; then
+        directories=( $(find -E . -type d -path \*elmond\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
     elif [[ "$PKG" == "psconfig" ]]; then
         directories=( $(find -E . -type d -path \*psconfig\*/\*unibuild-packaging/deb $FIND_IGNORE ) )
     elif [[ "$PKG" == "perl-shared" ]]; then
