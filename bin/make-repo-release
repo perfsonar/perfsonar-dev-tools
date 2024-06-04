@@ -171,12 +171,14 @@ if [ -n "$debrel" ]; then
         cd "$MYCWD"
         cd $dir/..
         echo "$PWD"
-        DEB_PKG=`awk 'NR==1 {print $1}' deb/changelog`
+        
         if [[ -f deb/changelog ]]; then
             verbose "$dir/deb/changelog is present, that's a good start."
         else
-            error "$dir doesn't look like a Debian packaging tree, I cannot find deb/changelog"
+            warn "$dir doesn't look like a Debian packaging tree, I cannot find deb/changelog"
+            continue
         fi
+        DEB_PKG=`awk 'NR==1 {print $1}' deb/changelog`
         if grep -qs '(native)' deb/source/format ; then
             if [ -n "$RPM_VERSION" ]; then
                 verbose "That's a Debian native package, we will not use the debrel (-$debrel)"
