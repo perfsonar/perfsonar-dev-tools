@@ -12,6 +12,12 @@ if [ -z "$EL_VERSION" ]; then
    exit 1
 fi
 
+#specify 'ol' for Oracle Linux
+DISTRO_TAG="$3"
+if [ -z "$DISTRO_TAG" ]; then
+   DISTRO_TAG="el"
+fi
+
 #handle optional parent directory
 PROD_REPO="$3"
 if [ -z "$PROD_REPO" ]; then
@@ -24,9 +30,9 @@ fi
 WHEREAMI=`dirname $0`
 MYCWD=`pwd`
 
-PRODDIR_BASE="${PROD_REPO}/el${EL_VERSION}"
+PRODDIR_BASE="${PROD_REPO}/${DISTRO_TAG}${EL_VERSION}"
 PRODDIR_SUFFIX="${VERSION}"
-URL_BASE="https://perfsonar-dev3.grnoc.iu.edu/staging/el/${EL_VERSION}"
+URL_BASE="https://perfsonar-dev3.grnoc.iu.edu/staging/${DISTRO_TAG}/${EL_VERSION}"
 URL_SUFFIX="perfsonar/${VERSION}/packages"
 ARCHS=( "x86_64" "SRPMS" )
 TEMPDIR=`mktemp -d`
