@@ -19,7 +19,7 @@ if [ -z "$DISTRO_TAG" ]; then
 fi
 
 #handle optional parent directory
-PROD_REPO="$3"
+PROD_REPO="$4"
 if [ -z "$PROD_REPO" ]; then
     PROD_REPO="${HOME}/repos/production-rpms"
 fi 
@@ -49,12 +49,13 @@ do
     echo "[$ARCH]"
     
     #Build directory structure
-    cd $MYCWD 
+    PRODDIR="${PRODDIR_BASE}/${ARCH}/$PRODDIR_SUFFIX"
+    mkdir -p ${PRODDIR}/packages
+    cd ${PRODDIR_BASE}/${ARCH}
     ${WHEREAMI}/yum-repo-update $VERSION ${PRODDIR_BASE}/${ARCH}
     
     #prep for download
     cd ${TEMPDIR}
-    PRODDIR="${PRODDIR_BASE}/${ARCH}/$PRODDIR_SUFFIX"
     URL="${URL_BASE}/${ARCH}/$URL_SUFFIX"
     
     # Download all the packages
