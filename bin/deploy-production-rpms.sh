@@ -18,6 +18,12 @@ if [ -z "$DISTRO_TAG" ]; then
    DISTRO_TAG="el"
 fi
 
+#Target directory is different when DISTRO_TAG is 'ol'. Still want it to go to el.
+DISTRO_TAG_TARGET="$DISTRO_TAG"
+if [ "$DISTRO_TAG" == "ol" ]; then
+    DISTRO_TAG_TARGET="el"
+fi
+
 #handle optional parent directory
 PROD_REPO="$4"
 if [ -z "$PROD_REPO" ]; then
@@ -30,7 +36,7 @@ fi
 WHEREAMI=`dirname $0`
 MYCWD=`pwd`
 
-PRODDIR_BASE="${PROD_REPO}/${DISTRO_TAG}${EL_VERSION}"
+PRODDIR_BASE="${PROD_REPO}/${DISTRO_TAG_TARGET}${EL_VERSION}"
 PRODDIR_SUFFIX="${VERSION}"
 URL_BASE="https://perfsonar-dev3.grnoc.iu.edu/staging/${DISTRO_TAG}/${EL_VERSION}"
 URL_SUFFIX="perfsonar/${VERSION}/packages"
