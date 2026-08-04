@@ -1,0 +1,81 @@
+#!/bin/sh -e
+#
+# install-perfsonar - A front-end for the perfSONAR auto-installer
+#
+# NB: THIS IS *NOT* THE AUTO-INSTALLER SCRIPT.
+#
+# Usage: install-perfsonar [ --branch BRANCH ] INSTALLER-ARGS
+#
+# Where:
+#
+#   BRANCH is the branch of the 'project' repo to use in fetching the
+#   installer.  This is useful for testing unreleased versions of the
+#   installer.
+#
+#   INSTALLER-ARGS are any arguments to be passed to the
+#   auto-installer.
+#
+
+TMPBASE=$(mktemp -d)
+cleanup()
+{
+    rm -rf "${TMPBASE}"
+}
+trap cleanup EXIT
+
+
+die()
+{
+    echo "$@" 1>&2
+    exit 1
+}
+
+
+usage()
+{
+    die "Usage: $(basename $0) [ --branch BRANCH ] INSTALLER-ARGS"
+}
+
+
+BRANCH=master
+while echo "$1" | grep -q -e '^--'
+do
+    ARG=$1
+    shift
+
+    case "${ARG}" in
+	--branch)
+	    [ -n "$1" ] || usage
+	    BRANCH="$1"
+	    shift
+	    ;;
+	*)
+	    die "${ARG}: Unknown argument."
+	    ;;
+    esac
+done
+
+
+SCRIPT="${TMPBASE}/script"
+
+curl -s -o "${SCRIPT}" "https://raw.githubusercontent.com/perfsonar/project/${BRANCH}/install-perfsonar" \
+    || die "Failed to retrieve the installer."
+
+# cURL exits zero regardless of the HTTP status but writes it to the
+# output file.
+
+LINE1=$(head -1 "${SCRIPT}")
+case "${LINE1}" in
+    \#!/bin/sh*)
+	# This looks like a shell script.
+	true
+	;;
+    404:*)
+	die "Installer not found.  Branch '${BRANCH}' might not exist."
+	;;
+    *)
+	die "Failed to retrieve the installer: ${LINE1}"
+	;;
+esac
+
+< "${SCRIPT}" sudo sh -s - "$@"
