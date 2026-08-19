@@ -1,5 +1,11 @@
 # Development Tools for perfSONAR Developers
 
+## Prerequistes
+
+ * A POSIX-compliant OS
+ * curl
+ * jq
+
 ## Git setup
 For a nice git history flow, it is good to change a few git default settings.  In your ~/.gitconfig file,
 you can set the following sections:

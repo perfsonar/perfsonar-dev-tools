@@ -1,0 +1,72 @@
+#!/bin/sh -e
+
+. $(dirname $0)/common
+
+BRANCH_ARG=
+DRY_RUN=
+START=
+STOP=
+while echo "$1" | grep -q -E '^--'
+do
+    ARG=$1
+    shift
+
+    case "${ARG}" in
+	--branch)
+	    BRANCH_ARG="-b $1"
+	    shift
+	    ;;
+	--dry-run)
+	    DRY_RUN=echo
+	    ;;
+	--start)
+	    START=$1
+	    shift
+	    ;;
+	--stop)
+	    STOP=$1
+	    shift
+	    ;;
+	*)
+	    die "${ARG}: Invalid argument"
+	    ;;
+    esac
+done
+
+
+[ $# -eq 1 ] \
+  || die "Usage: ${WHOAMI} WORK-DIR"
+WORK="$1"
+# TODO: Work directory should be empty?
+
+
+BUILD_ORDER="${TMPBASE}/build-order"
+repo_build_order > "${BUILD_ORDER}"
+
+
+for CANDIDATE in "${START}" "${STOP}"
+do
+    [ -n "${CANDIDATE}" ] \
+	&& ! grep -F -x -q "${CANDIDATE}" "${BUILD_ORDER}" \
+	    && die "${CANDIDATE}: No such repo"
+done
+
+
+STARTED=false
+cat "${BUILD_ORDER}" \
+    | while read REPO
+do
+    if ! ${STARTED} && [ -n "${START}" -a "${REPO}" != "${START}" ]
+    then
+	continue
+    fi
+    STARTED=true
+
+    printf '\n#\n# Building %s\n#\n\n' "${REPO}"
+    REPO_DIR="${WORK}/${REPO}"
+    ${DRY_RUN} rm -rf "${REPO_DIR}"
+    ${DRY_RUN} git -C "${WORK}" clone ${BRANCH_ARG}  "https://github.com/perfsonar/${REPO}.git"
+    ${DRY_RUN} make -C "${REPO_DIR}"
+    [ -n "${STOP}" -a "${REPO}" = "${STOP}" ] && exit 0 || :
+
+done
