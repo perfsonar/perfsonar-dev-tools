@@ -214,7 +214,7 @@ repo_build_order()
     BUILD_VARS="${TMPBASE}/build-vars"
     rm -rf "${BUILD_VARS}"
     curl -s -o "${BUILD_VARS}" \
-	 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/master/toolbox/workflows/build-vars-db.json' \
+	 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/main/toolbox/workflows/build-vars-db.json' \
 
     jq -r '.repos[] | .name as $name | .deps[] | "\($name) \(.)"' "${BUILD_VARS}" \
     | tsort \

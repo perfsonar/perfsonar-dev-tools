@@ -84,9 +84,9 @@ if [[ -z "$VERSION" || -z "$relnum" ]]; then
     error "VERSION and relnum (-r) must be given to make a release."
 fi
 
-# Check current branch against version: must be the same or must be master
+# Check current branch against version: must be the same or must be main
 BRANCH=`git branch | grep \* | cut -d ' ' -f2`
-if [[ "$force" == "false" && "$VERSION" != "$BRANCH" && "$BRANCH" != "master" ]]; then
+if [[ "$force" == "false" && "$VERSION" != "$BRANCH" && "$BRANCH" != "main" ]]; then
     error "I cannot make the $VERSION release from branch $BRANCH"
 fi
 
@@ -94,7 +94,7 @@ fi
 PKG="${PWD##*\/}"
 RPM_VERSION="$VERSION-$relnum"
 DEB_VERSION_DEFAULT="$VERSION"
-merge_to_master=false
+merge_to_main=false
 if [ "${relnum:0:1}" == "0" ]; then
     # That's a alpha/beta/RC
     GIT_TAG="v$VERSION-${relnum#*\.}"
@@ -103,12 +103,12 @@ if [ "${relnum:0:1}" == "0" ]; then
 elif [ "${relnum:0:1}" == "1" ]; then
     # That's a final
     GIT_TAG="v$VERSION"
-    merge_to_master=true
+    merge_to_main=true
     verbose "Let's celebrate, we have a final release!"
 else
     # That's an RPM only final release
     GIT_TAG="v$VERSION-rpm${relnum}"
-    merge_to_master=true
+    merge_to_main=true
     verbose "We have an RPM repackaging release."
     if [ -n "$debrel" ]; then
         error "You asked for both an RPM repackaging release and a Debian repackaging release, that's not compatible.\nThat should actually be a fully new release (or a new alpha/beta/RC)."
@@ -308,14 +308,14 @@ else
     fi
     git commit -m "$GITMSG"
     
-    if $merge_to_master; then
-        # Switch to master and merge, only for final releases
-        echo "Merging to master"
-        git checkout master
+    if $merge_to_main; then
+        # Switch to main and merge, only for final releases
+        echo "Merging to main"
+        git checkout main
         git pull
         git merge $VERSION
         if [ $? -ne 0 ]; then
-            echo "Merge to master failed"
+            echo "Merge to main failed"
             exit 1
         fi
         echo "DONE"

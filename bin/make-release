@@ -65,7 +65,7 @@ do
     if [ $? -eq 0 ]; then
         # Push changes away
         git push origin $VERSION
-        git push origin master
+        git push origin main
         git push --tags
         
         # Merge all changes into existing branches for next versions
