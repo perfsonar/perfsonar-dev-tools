@@ -15,7 +15,7 @@ import urllib.request
 
 from collections import deque
 
-URL = 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/master/toolbox/workflows/build-vars-db.json'
+URL = 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/main/toolbox/workflows/build-vars-db.json'
 
 # Topological Sort
 # Source: https://stackoverflow.com/a/47235505

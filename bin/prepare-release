@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Check all projects to see if they need merge into master
+# Check all projects to see if they need merge into main
 # 
 
 WHEREAMI=$(dirname $0)
@@ -47,7 +47,7 @@ do
         continue
     fi
     # compare branches
-    git diff --quiet --exit-code master remotes/origin/${VERSION} 
+    git diff --quiet --exit-code main remotes/origin/${VERSION} 
     if [ $? -eq 0 ]; then
         narrate "No changes this release, skipping"
         continue
@@ -70,7 +70,7 @@ else
         narrate "$CHANGED_PROJECT"
     done
     narrate ""
-    narrate "Please create a pull request for each to merge into master. After merge, create a tag named v${VERSION}"
+    narrate "Please create a pull request for each to merge into main. After merge, create a tag named v${VERSION}"
 fi
 #Clean-up TEMPDIR
 echo ""

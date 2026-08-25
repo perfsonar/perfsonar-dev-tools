@@ -189,7 +189,7 @@ To create branch 4.2.3 from 4.2.1 (skipping 4.2.2):
     - Do a git **push** if succesful
 
 ### merge-repo-forward
-To run from a higher release branch with a reference from an existing tag on the master branch.
+To run from a higher release branch with a reference from an existing tag on the main branch.
 
 - Merge a patch release into a higher version branch
 - Take care of conflicts on RPM and debian files
@@ -197,7 +197,7 @@ To run from a higher release branch with a reference from an existing tag on the
 
 #### Usage examples:
 
-To merge latest released branch 4.2.2 (with tag from master) into 4.3.0
+To merge latest released branch 4.2.2 (with tag from main) into 4.3.0
 ```
 (git:4.3.0)$ ../perfsonar-dev-tools/bin/merge-repo-forward 4.2.2
 ```
