@@ -2,4 +2,5 @@
 .DS_Store
 # Ignore vagrant files
 .vagrant
-
+# And Emacs leftovers
+*~

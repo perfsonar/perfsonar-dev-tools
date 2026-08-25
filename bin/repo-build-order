@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+#
+# Fetch the build variable file from GitHub and produce a
+# topologically-sorted list of the packages so the dependencies build
+# before the dependents.
+#
+# Note that this program should rely only on standard Python modules.
+# The original version of this was a shell script that used jq, which
+# became a chicken-and-egg thing.
+#
+
+import json
+import sys
+import urllib.request
+
+from collections import deque
+
+URL = 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/master/toolbox/workflows/build-vars-db.json'
+
+# Topological Sort
+# Source: https://stackoverflow.com/a/47235505
+# License: CC-BY-SA 4.0 by Shihab Shahriar Khan
+
+def iterative_topological_sort(graph, start, path=set()):
+    q = [start]
+    ans = []
+    while q:
+        v = q[-1]                   #item 1,just access, don't pop
+        path = path.union({v})  
+        children = [x for x in graph[v] if x not in path]    
+        if not children:              #no child or all of them already visited
+            ans = [v]+ans 
+            q.pop()
+        else: q.append(children[0])   #item 2, push just one child
+
+    return ans
+
+# End Topological Sort
+
+
+
+def die(message):
+     print(message, file=sys.stderr)
+     exit(1)
+
+try:
+     with urllib.request.urlopen(URL) as response:
+
+          # TODO: This mmay be redundant.
+          if response.status != 200:
+               die(f'Failed to fetch build vars: {response.status}')
+
+          content = response.read().decode('utf-8')
+
+except urllib.error.HTTPError as ex:
+     die(f'Failed to fetch build vars: {ex}')
+
+data = json.loads(content)
+
+graph = {
+     repo['name']: repo['deps']
+     for repo in data.get('repos', [])
+}
+
+order = iterative_topological_sort(graph, list(graph.keys())[0])
+
+print('\n'.join(
+     list(reversed(order))
+     ))
+

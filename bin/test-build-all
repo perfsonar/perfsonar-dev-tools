@@ -41,7 +41,7 @@ WORK="$1"
 
 
 BUILD_ORDER="${TMPBASE}/build-order"
-repo_build_order > "${BUILD_ORDER}"
+repo-build-order > "${BUILD_ORDER}"
 
 
 for CANDIDATE in "${START}" "${STOP}"

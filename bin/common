@@ -203,22 +203,3 @@ deb_correct_changelog()
         git add "$MYDIR/changelog"
     fi
 }
-
-
-# Retrieve the list of 
-repo_build_order()
-{
-    # This is the JSON that governs GitHub Actions' building of the
-    # project.
-    BUILD_VARS_URL=
-    BUILD_VARS="${TMPBASE}/build-vars"
-    rm -rf "${BUILD_VARS}"
-    curl -s -o "${BUILD_VARS}" \
-	 'https://raw.githubusercontent.com/perfsonar/project/refs/heads/master/toolbox/workflows/build-vars-db.json' \
-
-    jq -r '.repos[] | .name as $name | .deps[] | "\($name) \(.)"' "${BUILD_VARS}" \
-    | tsort \
-    | cat -n \
-    | sort -r -n \
-    | cut -f 2
-}
